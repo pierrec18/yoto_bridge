@@ -2,8 +2,10 @@ services:
   backend:
     build: ./backend
     container_name: yoto-bridge
+    # Backend non exposé sur le LAN : tout passe par le frontend (nginx) qui
+    # proxifie /api, /stream et /docs. Bind local pour debug sur l'hôte.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       # La base et les logs sont persistés dans le volume monté.
       YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
