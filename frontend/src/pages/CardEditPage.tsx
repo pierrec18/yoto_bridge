@@ -5,6 +5,7 @@ import {
   CopyButton,
   Group,
   Modal,
+  SegmentedControl,
   Select,
   Stack,
   Table,
@@ -14,13 +15,13 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconCopy, IconWand } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconUpload, IconWand } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { api } from "../api";
 import { ContentPicker, type TrackSelection } from "../components/ContentPicker";
-import type { Card, PlaybackMode, Playlist } from "../types";
+import type { Card, CardTrack, Delivery, PlaybackMode, Playlist } from "../types";
 
 const MODE_LABELS: Record<PlaybackMode, string> = {
   fixed: "Fixe",
@@ -60,15 +61,49 @@ export function CardEditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId]);
 
+  const [publishing, setPublishing] = useState(false);
+
   const applySelection = async (selection: TrackSelection) => {
     if (activeTrack === null) return;
+    const current = card?.tracks.find((t) => t.track_number === activeTrack);
+    // Le hors ligne exige un morceau fixe : on retombe sur stream sinon.
+    const delivery: Delivery =
+      current?.delivery === "offline" && selection.mode === "fixed" ? "offline" : "stream";
     await api.setTrack(cardId, activeTrack, {
       track_number: activeTrack,
       mode: selection.mode,
+      delivery,
       label: selection.label,
       config: selection.config,
     });
     await load();
+  };
+
+  const changeDelivery = async (track: CardTrack, delivery: Delivery) => {
+    await api.setTrack(cardId, track.track_number, {
+      track_number: track.track_number,
+      mode: track.mode,
+      delivery,
+      label: track.label,
+      config: track.config,
+    });
+    await load();
+  };
+
+  const publish = async () => {
+    setPublishing(true);
+    try {
+      const res = await api.publishCard(cardId);
+      notifications.show({
+        title: "Carte publiée sur Yoto",
+        message: `${res.chapters} pistes · cardId ${res.yoto_card_id ?? "?"}`,
+        color: "green",
+      });
+    } catch (err) {
+      notifications.show({ title: "Publication échouée", message: (err as Error).message, color: "red" });
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const runGenerate = async () => {
@@ -96,9 +131,18 @@ export function CardEditPage() {
             {card.track_count} pistes
           </Text>
         </div>
-        <Button leftSection={<IconWand size={16} />} variant="light" onClick={openGen}>
-          Générer automatiquement
-        </Button>
+        <Group>
+          <Button leftSection={<IconWand size={16} />} variant="light" onClick={openGen}>
+            Générer automatiquement
+          </Button>
+          <Button
+            leftSection={<IconUpload size={16} />}
+            onClick={publish}
+            loading={publishing}
+          >
+            Publier sur Yoto
+          </Button>
+        </Group>
       </Group>
 
       <Table.ScrollContainer minWidth={700}>
@@ -108,7 +152,8 @@ export function CardEditPage() {
               <Table.Th w={60}>Piste</Table.Th>
               <Table.Th w={110}>Mode</Table.Th>
               <Table.Th>Source</Table.Th>
-              <Table.Th w={140}>URL stream</Table.Th>
+              <Table.Th w={190}>Livraison</Table.Th>
+              <Table.Th w={90}>URL</Table.Th>
               <Table.Th w={110} />
             </Table.Tr>
           </Table.Thead>
@@ -126,6 +171,23 @@ export function CardEditPage() {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm">{track.label ?? <Text span c="dimmed">—</Text>}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Tooltip
+                      label="Le mode hors ligne exige un morceau fixe"
+                      disabled={track.mode === "fixed"}
+                      withArrow
+                    >
+                      <SegmentedControl
+                        size="xs"
+                        value={track.delivery}
+                        onChange={(v) => changeDelivery(track, v as Delivery)}
+                        data={[
+                          { label: "Stream", value: "stream" },
+                          { label: "Hors ligne", value: "offline", disabled: track.mode !== "fixed" },
+                        ]}
+                      />
+                    </Tooltip>
                   </Table.Td>
                   <Table.Td>
                     <CopyButton value={url}>

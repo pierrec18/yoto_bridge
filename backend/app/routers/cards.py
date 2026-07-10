@@ -104,6 +104,7 @@ async def duplicate_card(card_id: int, session: AsyncSession = Depends(get_sessi
             CardTrack(
                 track_number=t.track_number,
                 mode=t.mode,
+                delivery=t.delivery,
                 label=t.label,
                 config=dict(t.config),
             )
@@ -131,6 +132,7 @@ async def set_track(
         track = CardTrack(track_number=track_number)
         card.tracks.append(track)
     track.mode = payload.mode
+    track.delivery = payload.delivery
     track.label = payload.label
     track.config = payload.config
     track.position = 0

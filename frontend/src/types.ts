@@ -8,14 +8,28 @@ export type PlaybackMode =
   | "smart"
   | "search";
 
+export type Delivery = "stream" | "offline";
+
 export interface CardTrack {
   id: number;
   track_number: number;
   mode: PlaybackMode;
+  delivery: Delivery;
   label: string | null;
   config: Record<string, unknown>;
   position: number;
   last_song_id: string | null;
+}
+
+export interface YotoStatus {
+  client_id_set: boolean;
+  connected: boolean;
+  redirect_uri: string;
+}
+
+export interface PublishResult {
+  yoto_card_id: string | null;
+  chapters: number;
 }
 
 export interface Card {

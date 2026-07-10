@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_config
 from .database import init_db
-from .routers import cards, library, settings, stats, stream, sync
+from .routers import cards, library, settings, stats, stream, sync, yoto
 from .scheduler import periodic_sync
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -52,6 +52,7 @@ app.include_router(sync.router)
 app.include_router(library.router)
 app.include_router(cards.router)
 app.include_router(stats.router)
+app.include_router(yoto.router)
 app.include_router(stream.router)
 
 

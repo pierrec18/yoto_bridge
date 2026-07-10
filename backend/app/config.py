@@ -19,6 +19,16 @@ class AppConfig(BaseSettings):
     resolution_ttl_seconds: int = 8
     cors_origins: str = "*"
 
+    # Base publique du serveur, utilisée pour les URLs de stream déposées sur la
+    # Yoto et pour l'URL de redirection OAuth. Ex : https://yotobridge.crvsk.me
+    public_base_url: str = "http://localhost:8000"
+
+    # Intégration API officielle Yoto (§18).
+    yoto_login_base: str = "https://login.yotoplay.com"
+    yoto_api_base: str = "https://api.yotoplay.com"
+    yoto_audience: str = "https://api.yotoplay.com"
+    yoto_scopes: str = "user:content:manage offline_access"
+
 
 @lru_cache
 def get_config() -> AppConfig:

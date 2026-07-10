@@ -11,6 +11,10 @@ services:
       YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
       YOTO_SYNC_INTERVAL_SECONDS: "3600"
       YOTO_STREAM_DEFAULT_BITRATE: "192"
+      # URL publique : sert aux URLs /stream déposées sur la Yoto ET au
+      # redirect OAuth. DOIT correspondre au domaine réel + au Callback URL
+      # déclaré dans le portail dev Yoto.
+      YOTO_PUBLIC_BASE_URL: "https://yotobridge.crvsk.me"
     volumes:
       - ./data:/app/data
     restart: unless-stopped

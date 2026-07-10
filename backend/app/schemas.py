@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import PlaybackMode
+from .models import Delivery, PlaybackMode
 
 
 class SettingsIn(BaseModel):
@@ -38,6 +38,7 @@ class ConnectionTestResult(BaseModel):
 class CardTrackIn(BaseModel):
     track_number: int = Field(ge=1)
     mode: PlaybackMode = PlaybackMode.RANDOM
+    delivery: Delivery = Delivery.STREAM
     label: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
 
@@ -48,6 +49,7 @@ class CardTrackOut(BaseModel):
     id: int
     track_number: int
     mode: PlaybackMode
+    delivery: Delivery
     label: str | None
     config: dict[str, Any]
     position: int
@@ -131,3 +133,25 @@ class DashboardStats(BaseModel):
     cards: int
     tracks: int
     plays: int
+
+
+# -- Intégration Yoto (§18) ----------------------------------------------
+
+
+class YotoStatus(BaseModel):
+    client_id_set: bool
+    connected: bool
+    redirect_uri: str
+
+
+class YotoConfigIn(BaseModel):
+    client_id: str
+
+
+class YotoLoginOut(BaseModel):
+    authorize_url: str
+
+
+class PublishResult(BaseModel):
+    yoto_card_id: str | None
+    chapters: int

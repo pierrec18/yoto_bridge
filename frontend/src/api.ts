@@ -8,12 +8,15 @@ import type {
   CardTrack,
   ConnectionTestResult,
   DashboardStats,
+  Delivery,
   HistoryEntry,
   PlaybackMode,
   Playlist,
+  PublishResult,
   Settings,
   SyncResult,
   Track,
+  YotoStatus,
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -38,6 +41,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export interface CardTrackInput {
   track_number: number;
   mode: PlaybackMode;
+  delivery: Delivery;
   label?: string | null;
   config: Record<string, unknown>;
 }
@@ -89,4 +93,16 @@ export const api = {
       body: JSON.stringify(data),
     }),
   cardHistory: (id: number) => request<HistoryEntry[]>(`/api/cards/${id}/history`),
+
+  // Yoto (§18)
+  yotoStatus: () => request<YotoStatus>("/api/yoto/status"),
+  setYotoConfig: (client_id: string) =>
+    request<YotoStatus>("/api/yoto/config", {
+      method: "PUT",
+      body: JSON.stringify({ client_id }),
+    }),
+  yotoLogin: () => request<{ authorize_url: string }>("/api/yoto/login"),
+  yotoDisconnect: () => request<YotoStatus>("/api/yoto/disconnect", { method: "POST" }),
+  publishCard: (id: number) =>
+    request<PublishResult>(`/api/yoto/cards/${id}/publish`, { method: "POST" }),
 };

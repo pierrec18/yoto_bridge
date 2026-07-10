@@ -27,6 +27,13 @@ class PlaybackMode(str, enum.Enum):
     SEARCH = "search"
 
 
+class Delivery(str, enum.Enum):
+    """Mode de livraison d'une piste vers la Yoto (§18)."""
+
+    STREAM = "stream"  # type:stream, joué en streaming depuis ce serveur
+    OFFLINE = "offline"  # fichier uploadé chez Yoto, écoutable hors ligne
+
+
 class Settings(Base):
     """Configuration Navidrome (une seule ligne, id=1)."""
 
@@ -39,6 +46,13 @@ class Settings(Base):
     password: Mapped[str | None] = mapped_column(String(256))
     # Jeton partagé exigé sur les URLs /stream (déposé côté Yoto, révocable).
     stream_token: Mapped[str | None] = mapped_column(String(64))
+    # Intégration API officielle Yoto (§18) — OAuth Authorization Code + PKCE.
+    yoto_client_id: Mapped[str | None] = mapped_column(String(128))
+    yoto_access_token: Mapped[str | None] = mapped_column(Text)
+    yoto_refresh_token: Mapped[str | None] = mapped_column(Text)
+    yoto_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+    yoto_pkce_verifier: Mapped[str | None] = mapped_column(String(128))
+    yoto_pkce_state: Mapped[str | None] = mapped_column(String(64))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 
@@ -73,6 +87,7 @@ class CardTrack(Base):
     card_id: Mapped[int] = mapped_column(ForeignKey("cards.id", ondelete="CASCADE"))
     track_number: Mapped[int] = mapped_column(Integer)
     mode: Mapped[PlaybackMode] = mapped_column(String(16), default=PlaybackMode.RANDOM)
+    delivery: Mapped[Delivery] = mapped_column(String(16), default=Delivery.STREAM)
     label: Mapped[str | None] = mapped_column(String(255))
     # Configuration dépendant du mode : {"song_id": ...}, {"playlist_id": ...},
     # {"album_id": ...}, {"query": ..., "genre": ...}, etc.
@@ -145,3 +160,18 @@ class LibraryArtist(Base):
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String(512))
     album_count: Mapped[int | None] = mapped_column(Integer)
+
+
+class YotoMedia(Base):
+    """Cache des uploads Yoto : évite de re-transcoder un même morceau (§18)."""
+
+    __tablename__ = "yoto_media"
+
+    song_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    sha256: Mapped[str] = mapped_column(String(128))
+    title: Mapped[str | None] = mapped_column(String(512))
+    duration: Mapped[int | None] = mapped_column(Integer)
+    file_size: Mapped[int | None] = mapped_column(Integer)
+    channels: Mapped[int | None] = mapped_column(Integer)
+    format: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
