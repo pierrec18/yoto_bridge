@@ -18,8 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_config
 from ..database import get_session
-from ..models import CardTrack
-from ..providers.factory import ProviderNotConfigured, provider_from_session
+from ..models import CardTrack, Settings
+from ..providers.factory import ProviderNotConfigured, build_provider
+from ..security import token_is_valid
 from ..services.playback import PlaybackService, ResolutionError
 
 logger = logging.getLogger(__name__)
@@ -31,9 +32,15 @@ async def stream_track(
     card_id: int,
     track_number: int,
     request: Request,
+    t: str | None = None,
     range_header: str | None = Header(default=None, alias="Range"),
     session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
+    # Jeton partagé exigé (déposé côté Yoto dans l'URL) : ?t=...
+    settings = await session.get(Settings, 1)
+    if settings is None or not token_is_valid(settings, t):
+        raise HTTPException(status_code=403, detail="Jeton invalide")
+
     card_track = (
         await session.execute(
             select(CardTrack).where(
@@ -46,7 +53,7 @@ async def stream_track(
         raise HTTPException(status_code=404, detail="Piste inconnue")
 
     try:
-        provider = await provider_from_session(session)
+        provider = build_provider(settings)
     except ProviderNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 

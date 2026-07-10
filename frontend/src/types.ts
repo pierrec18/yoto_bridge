@@ -34,6 +34,7 @@ export interface Settings {
   provider: string;
   navidrome_url: string | null;
   username: string | null;
+  stream_token: string | null;
   configured: boolean;
 }
 

@@ -50,11 +50,13 @@ export function CardEditPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [genPlaylist, setGenPlaylist] = useState<string | null>(null);
   const [genStrategy, setGenStrategy] = useState<string>("playlist_expand");
+  const [streamToken, setStreamToken] = useState<string | null>(null);
 
   const load = () => api.getCard(cardId).then(setCard);
   useEffect(() => {
     load();
     api.playlists().then(setPlaylists).catch(() => setPlaylists([]));
+    api.getSettings().then((s) => setStreamToken(s.stream_token)).catch(() => setStreamToken(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardId]);
 
@@ -112,7 +114,8 @@ export function CardEditPage() {
           </Table.Thead>
           <Table.Tbody>
             {card.tracks.map((track) => {
-              const url = `${window.location.origin}/stream/${card.id}/${track.track_number}`;
+              const tokenSuffix = streamToken ? `?t=${streamToken}` : "";
+              const url = `${window.location.origin}/stream/${card.id}/${track.track_number}${tokenSuffix}`;
               return (
                 <Table.Tr key={track.track_number}>
                   <Table.Td>{track.track_number}</Table.Td>

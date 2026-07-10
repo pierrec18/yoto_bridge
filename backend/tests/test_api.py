@@ -75,6 +75,23 @@ async def test_dashboard_without_config(client: httpx.AsyncClient) -> None:
     assert data["navidrome_online"] is False
 
 
-async def test_stream_unknown_track_returns_404(client: httpx.AsyncClient) -> None:
+async def test_stream_requires_token(client: httpx.AsyncClient) -> None:
+    # Sans token -> 403, même pour une piste inconnue (pas de fuite d'existence).
     resp = await client.get("/stream/999/1")
-    assert resp.status_code == 404
+    assert resp.status_code == 403
+
+
+async def test_stream_valid_token_then_404_for_unknown_card(client: httpx.AsyncClient) -> None:
+    # GET settings crée la ligne et génère le token.
+    token = (await client.get("/api/settings")).json()["stream_token"]
+    assert token
+    bad = await client.get("/stream/999/1?t=wrong")
+    assert bad.status_code == 403
+    ok = await client.get(f"/stream/999/1?t={token}")
+    assert ok.status_code == 404  # token valide, mais carte inexistante
+
+
+async def test_reset_token_changes_value(client: httpx.AsyncClient) -> None:
+    first = (await client.get("/api/settings")).json()["stream_token"]
+    reset = (await client.post("/api/settings/reset-token")).json()["stream_token"]
+    assert reset and reset != first

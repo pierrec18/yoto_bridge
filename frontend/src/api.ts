@@ -52,6 +52,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  resetStreamToken: () =>
+    request<{ stream_token: string }>("/api/settings/reset-token", { method: "POST" }),
 
   // Sync + stats
   sync: () => request<SyncResult>("/api/sync", { method: "POST" }),

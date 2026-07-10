@@ -36,6 +36,14 @@ morceau à chaque requête HTTP, un petit cache TTL par `(carte, piste)` renvoie
 par défaut). La sémantique exacte piste-suivante / précédente devra être affinée
 sur du matériel réel — c'est le premier point à valider en test physique.
 
+### Token de streaming
+
+Chaque URL `/stream` exige un jeton partagé (`?t=...`), généré automatiquement et
+stocké côté serveur. Il est intégré aux URLs copiées depuis l'éditeur de carte
+(donc déposées sur la Yoto). En cas de fuite, un bouton **Réglages →
+Réinitialiser** régénère le jeton : les anciennes URLs renvoient alors `403` et
+il suffit de recopier les nouvelles. Endpoint : `POST /api/settings/reset-token`.
+
 ## Modes de lecture (§5)
 
 | Mode       | `config` attendu                                             |

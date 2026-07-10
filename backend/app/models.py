@@ -37,6 +37,8 @@ class Settings(Base):
     navidrome_url: Mapped[str | None] = mapped_column(String(512))
     username: Mapped[str | None] = mapped_column(String(128))
     password: Mapped[str | None] = mapped_column(String(256))
+    # Jeton partagé exigé sur les URLs /stream (déposé côté Yoto, révocable).
+    stream_token: Mapped[str | None] = mapped_column(String(64))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 

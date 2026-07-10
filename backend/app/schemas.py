@@ -22,7 +22,12 @@ class SettingsOut(BaseModel):
     provider: str
     navidrome_url: str | None = None
     username: str | None = None
+    stream_token: str | None = None
     configured: bool = False
+
+
+class StreamTokenOut(BaseModel):
+    stream_token: str
 
 
 class ConnectionTestResult(BaseModel):
