@@ -25,6 +25,13 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalise les dates SQLite, qui sont relues sans information de fuseau."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 class YotoClient:
     """Encapsule les appels Yoto pour une ligne de réglages donnée.
 
@@ -50,7 +57,7 @@ class YotoClient:
         valid = (
             s.yoto_access_token
             and s.yoto_token_expires_at
-            and s.yoto_token_expires_at > _now() + timedelta(seconds=60)
+            and _as_utc(s.yoto_token_expires_at) > _now() + timedelta(seconds=60)
         )
         if valid:
             return s.yoto_access_token  # type: ignore[return-value]
