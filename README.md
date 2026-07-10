@@ -130,6 +130,35 @@ docker compose up --build
 # Données persistées dans ./data
 ```
 
+### Authentification OIDC / Pocket ID
+
+L'authentification est optionnelle et désactivée par défaut. Les pages, l'API et
+la documentation sont protégées lorsqu'elle est active. Les URL `/stream/...`
+restent publiques, mais exigent toujours leur jeton partagé afin que les lecteurs
+Yoto puissent les lire.
+
+1. Dans Pocket ID, créer un client OIDC avec cette URL de callback :
+   `https://votre-domaine/api/auth/callback`.
+2. Copier `.env.example` vers `.env`, renseigner le client ID, le secret et
+   générer `YOTO_SESSION_SECRET` avec `openssl rand -hex 32`.
+3. Passer `YOTO_AUTH_ENABLED=true`, puis reconstruire le backend.
+
+Exemple :
+
+```dotenv
+YOTO_AUTH_ENABLED=true
+YOTO_OIDC_ISSUER_URL=https://id.example.com
+YOTO_OIDC_CLIENT_ID=...
+YOTO_OIDC_CLIENT_SECRET=...
+YOTO_OIDC_SCOPES=openid profile email
+YOTO_SESSION_SECRET=...
+```
+
+Après une mise à jour ajoutant les pochettes, lancer une synchronisation de la
+bibliothèque. Les pochettes sont alors affichées dans la recherche et l'éditeur.
+Lors de la publication, Yoto les convertit automatiquement en icônes 16×16 ; le
+résultat est mis en cache pour éviter de téléverser plusieurs fois la même image.
+
 ## Tests
 
 ```bash

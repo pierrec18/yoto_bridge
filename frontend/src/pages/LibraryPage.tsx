@@ -1,4 +1,4 @@
-import { Table, Text, TextInput, Title } from "@mantine/core";
+import { Avatar, Group, Table, Text, TextInput, Title } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -36,7 +36,7 @@ export function LibraryPage() {
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Titre</Table.Th>
+                <Table.Th>Morceau</Table.Th>
                 <Table.Th>Artiste</Table.Th>
                 <Table.Th>Album</Table.Th>
                 <Table.Th>Genre</Table.Th>
@@ -46,7 +46,12 @@ export function LibraryPage() {
             <Table.Tbody>
               {tracks.map((t) => (
                 <Table.Tr key={t.id}>
-                  <Table.Td>{t.title}</Table.Td>
+                  <Table.Td>
+                    <Group gap="sm" wrap="nowrap">
+                      <Avatar src={t.cover_url} radius="sm" size={42} />
+                      <Text size="sm" fw={500}>{t.title}</Text>
+                    </Group>
+                  </Table.Td>
                   <Table.Td>{t.artist}</Table.Td>
                   <Table.Td>{t.album}</Table.Td>
                   <Table.Td>{t.genre}</Table.Td>

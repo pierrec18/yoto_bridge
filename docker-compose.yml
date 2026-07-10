@@ -11,6 +11,14 @@ services:
       YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
       YOTO_SYNC_INTERVAL_SECONDS: "3600"
       YOTO_STREAM_DEFAULT_BITRATE: "192"
+      # Auth OIDC optionnelle. Les valeurs sensibles viennent du fichier .env
+      # placé à côté de ce compose (jamais commité).
+      YOTO_AUTH_ENABLED: "${YOTO_AUTH_ENABLED:-false}"
+      YOTO_OIDC_ISSUER_URL: "${YOTO_OIDC_ISSUER_URL:-}"
+      YOTO_OIDC_CLIENT_ID: "${YOTO_OIDC_CLIENT_ID:-}"
+      YOTO_OIDC_CLIENT_SECRET: "${YOTO_OIDC_CLIENT_SECRET:-}"
+      YOTO_OIDC_SCOPES: "${YOTO_OIDC_SCOPES:-openid profile email}"
+      YOTO_SESSION_SECRET: "${YOTO_SESSION_SECRET:-}"
       # URL publique : sert aux URLs /stream déposées sur la Yoto ET au
       # redirect OAuth. DOIT correspondre au domaine réel + au Callback URL
       # déclaré dans le portail dev Yoto.
@@ -23,7 +31,7 @@ services:
     build: ./frontend
     container_name: yoto-bridge-web
     ports:
-      - "8080:80"
+      - "${YOTO_WEB_PORT:-8081}:80"
     depends_on:
       - backend
     restart: unless-stopped

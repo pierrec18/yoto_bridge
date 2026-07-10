@@ -98,6 +98,8 @@ class TrackOut(BaseModel):
     genre: str | None = None
     year: int | None = None
     duration: int | None = None
+    cover_art: str | None = None
+    cover_url: str | None = None
 
 
 class PlaylistOut(BaseModel):
@@ -111,6 +113,8 @@ class AlbumOut(BaseModel):
     name: str
     artist: str | None = None
     year: int | None = None
+    cover_art: str | None = None
+    cover_url: str | None = None
 
 
 class ArtistOut(BaseModel):

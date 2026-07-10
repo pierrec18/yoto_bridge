@@ -1,5 +1,7 @@
 import {
+  Avatar,
   Button,
+  Group,
   Modal,
   NumberInput,
   ScrollArea,
@@ -12,6 +14,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 import { api } from "../api";
 import type { Album, PlaybackMode, Playlist, Track } from "../types";
@@ -34,7 +37,7 @@ function PickList<T extends { id: string }>({
   onPick,
 }: {
   items: T[];
-  render: (item: T) => string;
+  render: (item: T) => ReactNode;
   onPick: (item: T) => void;
 }) {
   return (
@@ -48,7 +51,7 @@ function PickList<T extends { id: string }>({
             style={{ borderRadius: 6 }}
             className="picker-row"
           >
-            <Text size="sm">{render(item)}</Text>
+            {render(item)}
           </UnstyledButton>
         ))}
         {items.length === 0 && <Text c="dimmed" size="sm" p="xs">Aucun résultat.</Text>}
@@ -106,11 +109,23 @@ export function ContentPicker({ opened, onClose, onSelect }: Props) {
           />
           <PickList
             items={tracks}
-            render={(t) => `${t.title} — ${t.artist ?? "?"}`}
+            render={(t) => (
+              <Group gap="sm" wrap="nowrap">
+                <Avatar src={t.cover_url} radius="sm" size={44} />
+                <div>
+                  <Text size="sm" fw={500}>{t.title}</Text>
+                  <Text size="xs" c="dimmed">{t.artist ?? "?"} · {t.album ?? "Album inconnu"}</Text>
+                </div>
+              </Group>
+            )}
             onPick={(t) =>
               pick({
                 mode: "fixed",
-                config: { song_id: t.id },
+                config: {
+                  song_id: t.id,
+                  cover_art: t.cover_art,
+                  cover_url: t.cover_url,
+                },
                 label: `${t.title} — ${t.artist ?? ""}`.trim(),
               })
             }
@@ -126,8 +141,24 @@ export function ContentPicker({ opened, onClose, onSelect }: Props) {
           />
           <PickList
             items={albums}
-            render={(a) => `${a.name} — ${a.artist ?? "?"}`}
-            onPick={(a) => pick({ mode: "album", config: { album_id: a.id }, label: a.name })}
+            render={(a) => (
+              <Group gap="sm" wrap="nowrap">
+                <Avatar src={a.cover_url} radius="sm" size={44} />
+                <div>
+                  <Text size="sm" fw={500}>{a.name}</Text>
+                  <Text size="xs" c="dimmed">{a.artist ?? "?"}</Text>
+                </div>
+              </Group>
+            )}
+            onPick={(a) => pick({
+              mode: "album",
+              config: {
+                album_id: a.id,
+                cover_art: a.cover_art,
+                cover_url: a.cover_url,
+              },
+              label: a.name,
+            })}
           />
         </Tabs.Panel>
 

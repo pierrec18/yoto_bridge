@@ -9,10 +9,12 @@ from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
+from .auth import OIDCAuthMiddleware
 from .config import get_config
 from .database import init_db
-from .routers import cards, library, settings, stats, stream, sync, yoto
+from .routers import auth, cards, library, settings, stats, stream, sync, yoto
 from .scheduler import periodic_sync
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -46,7 +48,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# SessionMiddleware doit envelopper le middleware d'authentification pour que
+# request.session soit disponible pendant le contrôle d'accès.
+app.add_middleware(OIDCAuthMiddleware)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_config.session_secret or "auth-disabled",
+    max_age=_config.session_max_age_seconds,
+    same_site="lax",
+    https_only=_config.public_base_url.startswith("https://"),
+)
 
+app.include_router(auth.router)
 app.include_router(settings.router)
 app.include_router(sync.router)
 app.include_router(library.router)

@@ -65,6 +65,8 @@ export interface Track {
   genre: string | null;
   year: number | null;
   duration: number | null;
+  cover_art: string | null;
+  cover_url: string | null;
 }
 
 export interface Playlist {
@@ -78,6 +80,14 @@ export interface Album {
   name: string;
   artist: string | null;
   year: number | null;
+  cover_art: string | null;
+  cover_url: string | null;
+}
+
+export interface AuthStatus {
+  enabled: boolean;
+  authenticated: boolean;
+  user: { sub: string; name: string; email: string } | null;
 }
 
 export interface Artist {

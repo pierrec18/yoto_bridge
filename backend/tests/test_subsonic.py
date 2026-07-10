@@ -75,6 +75,21 @@ async def test_stream_forwards_range_and_content_type() -> None:
     await provider.close()
 
 
+async def test_cover_art_is_proxied() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/rest/getCoverArt.view")
+        assert request.url.params["id"] == "cover-42"
+        assert request.url.params["size"] == "300"
+        return httpx.Response(200, content=b"jpeg", headers={"content-type": "image/jpeg"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    provider = SubsonicProvider("http://nav", "user", _PASSWORD, client=client)
+    result = await provider.get_cover_art("cover-42")
+    assert result.content_type == "image/jpeg"
+    assert b"".join([chunk async for chunk in result.body]) == b"jpeg"
+    await provider.close()
+
+
 async def test_error_response_raises() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

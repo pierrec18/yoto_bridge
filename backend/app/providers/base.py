@@ -111,6 +111,9 @@ class MusicProvider(ABC):
     async def search(self, filters: SearchFilters, limit: int = 100) -> list[ProviderTrack]: ...
 
     @abstractmethod
+    async def get_cover_art(self, cover_id: str, *, size: int = 300) -> StreamResponse: ...
+
+    @abstractmethod
     async def stream(
         self,
         track_id: str,

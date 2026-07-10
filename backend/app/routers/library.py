@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import distinct, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
 from ..models import LibraryAlbum, LibraryArtist, LibraryPlaylist, LibraryTrack
+from ..providers.factory import ProviderNotConfigured, provider_from_session
 from ..schemas import AlbumOut, ArtistOut, PlaylistOut, TrackOut
 
 router = APIRouter(prefix="/api/library", tags=["library"])
+
+
+def _cover_url(cover_art: str | None) -> str | None:
+    return f"/api/library/cover?id={quote(cover_art)}" if cover_art else None
 
 
 @router.get("/search", response_model=list[TrackOut])
@@ -43,6 +51,8 @@ async def search(
             genre=r.genre,
             year=r.year,
             duration=r.duration,
+            cover_art=r.cover_art,
+            cover_url=_cover_url(r.cover_art),
         )
         for r in rows
     ]
@@ -63,7 +73,45 @@ async def albums(
     if q:
         stmt = stmt.where(LibraryAlbum.name.ilike(f"%{q}%"))
     rows = (await session.execute(stmt.limit(limit))).scalars().all()
-    return [AlbumOut(id=r.id, name=r.name, artist=r.artist, year=r.year) for r in rows]
+    return [
+        AlbumOut(
+            id=r.id,
+            name=r.name,
+            artist=r.artist,
+            year=r.year,
+            cover_art=r.cover_art,
+            cover_url=_cover_url(r.cover_art),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/cover")
+async def cover(
+    id: str = Query(min_length=1),
+    session: AsyncSession = Depends(get_session),
+) -> StreamingResponse:
+    try:
+        provider = await provider_from_session(session)
+    except ProviderNotConfigured as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    response = await provider.get_cover_art(id, size=300)
+    if response.status_code >= 400:
+        await provider.close()
+        raise HTTPException(status_code=response.status_code, detail="Pochette introuvable")
+
+    async def body():
+        try:
+            async for chunk in response.body:
+                yield chunk
+        finally:
+            await provider.close()
+
+    return StreamingResponse(
+        body(),
+        media_type=response.content_type,
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
 
 
 @router.get("/artists", response_model=list[ArtistOut])

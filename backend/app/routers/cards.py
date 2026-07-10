@@ -183,7 +183,10 @@ async def generate_tracks(
                 track_number=i + 1,
                 mode=PlaybackMode.FIXED,
                 label=song.title,
-                config={"song_id": song.id},
+                config={
+                    "song_id": song.id,
+                    **({"cover_art": song.cover_art} if song.cover_art else {}),
+                },
             )
             for i, song in enumerate(songs[:count])
         ]

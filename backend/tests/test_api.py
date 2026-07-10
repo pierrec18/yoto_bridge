@@ -75,6 +75,12 @@ async def test_dashboard_without_config(client: httpx.AsyncClient) -> None:
     assert data["navidrome_online"] is False
 
 
+async def test_auth_is_transparent_when_disabled(client: httpx.AsyncClient) -> None:
+    resp = await client.get("/api/auth/status")
+    assert resp.status_code == 200
+    assert resp.json() == {"enabled": False, "authenticated": True, "user": None}
+
+
 async def test_stream_requires_token(client: httpx.AsyncClient) -> None:
     # Sans token -> 403, même pour une piste inconnue (pas de fuite d'existence).
     resp = await client.get("/stream/999/1")

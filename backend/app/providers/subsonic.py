@@ -195,6 +195,28 @@ class SubsonicProvider(MusicProvider):
         tracks = [self._to_track(s) for s in songs]
         return [t for t in tracks if _matches(t, filters)]
 
+    async def get_cover_art(self, cover_id: str, *, size: int = 300) -> StreamResponse:
+        params = self._auth_params()
+        params.update({"id": cover_id, "size": str(size)})
+        request = self._client.build_request("GET", self._url("getCoverArt.view"), params=params)
+        response = await self._client.send(request, stream=True)
+
+        async def body() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in response.aiter_bytes():
+                    yield chunk
+            finally:
+                await response.aclose()
+
+        return StreamResponse(
+            content_type=response.headers.get("content-type", "image/jpeg"),
+            status_code=response.status_code,
+            body=body(),
+            headers={
+                "cache-control": response.headers.get("cache-control", "public, max-age=86400")
+            },
+        )
+
     async def stream(
         self,
         track_id: str,

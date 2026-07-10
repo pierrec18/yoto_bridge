@@ -42,6 +42,9 @@ class FakeYoto:
         self.content_body = body
         return {"cardId": "card-abc"}
 
+    async def upload_icon(self, data: bytes, content_type: str, *, filename: str) -> str:
+        return "icon-media"
+
 
 async def _settings(session: AsyncSession) -> Settings:
     s = Settings(id=1, stream_token="tok", yoto_client_id="c", yoto_refresh_token="r")
@@ -65,7 +68,11 @@ async def test_publish_mixes_stream_and_offline(session: AsyncSession) -> None:
     session.add(card)
     await session.commit()
 
-    provider = FakeProvider(tracks={"s1": ProviderTrack(id="s1", title="Hakuna Matata")})
+    provider = FakeProvider(
+        tracks={
+            "s1": ProviderTrack(id="s1", title="Hakuna Matata", cover_art="cover-1")
+        }
+    )
     yoto = FakeYoto()
     result = await PublishService(session, settings, yoto, provider).publish(card)  # type: ignore[arg-type]
 
@@ -81,6 +88,8 @@ async def test_publish_mixes_stream_and_offline(session: AsyncSession) -> None:
     assert stream_track["trackUrl"].endswith("/stream/{}/1?t=tok".format(card.id))
     assert offline_track["type"] == "audio"
     assert offline_track["trackUrl"] == "yoto:#deadbeef"
+    assert chapters[1]["display"] == {"icon16x16": "yoto:#icon-media"}
+    assert offline_track["display"] == {"icon16x16": "yoto:#icon-media"}
 
     # Média mis en cache pour éviter un ré-upload.
     cached = await session.get(YotoMedia, "s1")

@@ -104,6 +104,23 @@ class YotoClient:
             await asyncio.sleep(interval)
         raise YotoError("Transcodage Yoto trop long (timeout)")
 
+    async def upload_icon(
+        self, data: bytes, content_type: str, *, filename: str
+    ) -> str:
+        """Envoie une image à Yoto et renvoie son mediaId d'icône 16×16."""
+        resp = await self._client.post(
+            f"{self._cfg.yoto_api_base}/media/displayIcons/user/me/upload",
+            params={"autoConvert": "true", "filename": filename},
+            content=data,
+            headers={**await self._headers(), "Content-Type": content_type},
+        )
+        if resp.status_code >= 400:
+            raise YotoError(f"Upload icône Yoto {resp.status_code} : {resp.text}")
+        media_id = resp.json().get("displayIcon", {}).get("mediaId")
+        if not media_id:
+            raise YotoError("Réponse d'upload d'icône Yoto invalide")
+        return str(media_id)
+
     # -- Contenu ----------------------------------------------------------
 
     async def create_or_update_content(self, body: dict[str, Any]) -> dict[str, Any]:

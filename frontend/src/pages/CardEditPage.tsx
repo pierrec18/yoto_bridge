@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Avatar,
   Badge,
   Button,
   CopyButton,
@@ -170,7 +171,14 @@ export function CardEditPage() {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{track.label ?? <Text span c="dimmed">—</Text>}</Text>
+                    <Group gap="sm" wrap="nowrap">
+                      <Avatar
+                        src={typeof track.config.cover_url === "string" ? track.config.cover_url : null}
+                        radius="sm"
+                        size={38}
+                      />
+                      <Text size="sm">{track.label ?? <Text span c="dimmed">—</Text>}</Text>
+                    </Group>
                   </Table.Td>
                   <Table.Td>
                     <Tooltip

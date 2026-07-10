@@ -11,13 +11,18 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   IconCards,
   IconLibrary,
+  IconLogout,
   IconMoon,
   IconRadio,
   IconSettings,
   IconSun,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
+
+import { api } from "../api";
+import type { AuthStatus } from "../types";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: IconRadio },
@@ -30,6 +35,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const [opened, { toggle, close }] = useDisclosure();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const location = useLocation();
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
+
+  useEffect(() => {
+    api.authStatus().then(setAuth).catch(() => setAuth(null));
+  }, []);
 
   return (
     <AppShell
@@ -44,9 +54,26 @@ export function Layout({ children }: { children: ReactNode }) {
             <IconRadio size={22} />
             <Title order={4}>Yoto Radio Server</Title>
           </Group>
-          <ActionIcon variant="default" onClick={() => toggleColorScheme()} aria-label="Thème">
-            {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
-          </ActionIcon>
+          <Group gap="xs">
+            {auth?.enabled && (
+              <>
+                <Title order={6} visibleFrom="sm">
+                  {auth.user?.name || auth.user?.email}
+                </Title>
+                <ActionIcon
+                  component="a"
+                  href="/api/auth/logout"
+                  variant="default"
+                  aria-label="Déconnexion"
+                >
+                  <IconLogout size={18} />
+                </ActionIcon>
+              </>
+            )}
+            <ActionIcon variant="default" onClick={() => toggleColorScheme()} aria-label="Thème">
+              {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+            </ActionIcon>
+          </Group>
         </Group>
       </AppShell.Header>
 

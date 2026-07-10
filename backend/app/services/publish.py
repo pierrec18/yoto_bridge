@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_config
-from ..models import Card, CardTrack, Delivery, PlaybackMode, Settings, YotoMedia
+from ..models import Card, CardTrack, Delivery, PlaybackMode, Settings, YotoIcon, YotoMedia
 from ..providers.base import MusicProvider
 from ..yoto.client import YotoClient, YotoError
 
@@ -40,20 +40,30 @@ class PublishService:
 
         for track in sorted(card.tracks, key=lambda t: t.track_number):
             key = f"{track.track_number:02d}"
+            try:
+                display = await self._display_for_track(track)
+            except Exception:  # une pochette ne doit jamais bloquer l'audio
+                logger.warning(
+                    "Impossible de créer l'icône de la piste %s", track.track_number, exc_info=True
+                )
+                display = None
             if track.delivery == Delivery.OFFLINE:
                 track_obj, dur, size = await self._offline_track(track, key)
                 total_duration += dur
                 total_size += size
             else:
                 track_obj = self._stream_track(card, track, key)
-            chapters.append(
-                {
-                    "key": key,
-                    "title": track.label or f"Piste {track.track_number}",
-                    "overlayLabel": str(track.track_number),
-                    "tracks": [track_obj],
-                }
-            )
+            if display:
+                track_obj["display"] = display
+            chapter = {
+                "key": key,
+                "title": track.label or f"Piste {track.track_number}",
+                "overlayLabel": str(track.track_number),
+                "tracks": [track_obj],
+            }
+            if display:
+                chapter["display"] = display
+            chapters.append(chapter)
 
         body: dict[str, Any] = {
             "title": card.name,
@@ -76,6 +86,43 @@ class PublishService:
             card.yoto_card_id = card_id
         logger.info("Carte %s publiée sur Yoto (cardId=%s)", card.id, card.yoto_card_id)
         return {"yoto_card_id": card.yoto_card_id, "chapters": len(chapters)}
+
+    async def _display_for_track(self, track: CardTrack) -> dict[str, str] | None:
+        """Convertit la pochette de la source en icône Yoto et la met en cache."""
+        cover_art = str(track.config.get("cover_art") or "") or await self._find_cover_art(track)
+        if not cover_art:
+            return None
+        cached = await self._session.get(YotoIcon, cover_art)
+        if cached is not None:
+            return {"icon16x16": f"yoto:#{cached.media_id}"}
+
+        response = await self._provider.get_cover_art(cover_art, size=300)
+        if response.status_code >= 400:
+            async for _ in response.body:
+                pass
+            return None
+        data = b"".join([chunk async for chunk in response.body])
+        if not data:
+            return None
+        media_id = await self._yoto.upload_icon(
+            data,
+            response.content_type,
+            filename=f"album-{cover_art}",
+        )
+        self._session.add(YotoIcon(cover_art=cover_art, media_id=media_id))
+        return {"icon16x16": f"yoto:#{media_id}"}
+
+    async def _find_cover_art(self, track: CardTrack) -> str | None:
+        if track.mode == PlaybackMode.FIXED and track.config.get("song_id"):
+            song = await self._provider.get_track(str(track.config["song_id"]))
+            return song.cover_art if song else None
+        if track.mode == PlaybackMode.ALBUM and track.config.get("album_id"):
+            songs = await self._provider.get_album_tracks(str(track.config["album_id"]))
+            return songs[0].cover_art if songs else None
+        if track.mode == PlaybackMode.PLAYLIST and track.config.get("playlist_id"):
+            songs = await self._provider.get_playlist_tracks(str(track.config["playlist_id"]))
+            return songs[0].cover_art if songs else None
+        return None
 
     # -- Validation -------------------------------------------------------
 

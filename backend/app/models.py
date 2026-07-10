@@ -131,6 +131,7 @@ class LibraryTrack(Base):
     year: Mapped[int | None] = mapped_column(Integer)
     duration: Mapped[int | None] = mapped_column(Integer)
     rating: Mapped[int | None] = mapped_column(Integer)
+    cover_art: Mapped[str | None] = mapped_column(String(128))
 
 
 class LibraryAlbum(Base):
@@ -143,6 +144,7 @@ class LibraryAlbum(Base):
     year: Mapped[int | None] = mapped_column(Integer)
     genre: Mapped[str | None] = mapped_column(String(128))
     song_count: Mapped[int | None] = mapped_column(Integer)
+    cover_art: Mapped[str | None] = mapped_column(String(128))
 
 
 class LibraryPlaylist(Base):
@@ -174,4 +176,14 @@ class YotoMedia(Base):
     file_size: Mapped[int | None] = mapped_column(Integer)
     channels: Mapped[int | None] = mapped_column(Integer)
     format: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class YotoIcon(Base):
+    """Association pochette Navidrome -> icône 16×16 convertie par Yoto."""
+
+    __tablename__ = "yoto_icons"
+
+    cover_art: Mapped[str] = mapped_column(String(128), primary_key=True)
+    media_id: Mapped[str] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)

@@ -4,6 +4,7 @@
 import type {
   Album,
   Artist,
+  AuthStatus,
   Card,
   CardTrack,
   ConnectionTestResult,
@@ -25,6 +26,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     ...options,
   });
   if (!res.ok) {
+    if (res.status === 401 && !url.startsWith("/api/auth/")) {
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/api/auth/login?next=${encodeURIComponent(next)}`);
+    }
     let detail = res.statusText;
     try {
       const body = await res.json();
@@ -47,6 +52,8 @@ export interface CardTrackInput {
 }
 
 export const api = {
+  authStatus: () => request<AuthStatus>("/api/auth/status"),
+
   // Settings
   getSettings: () => request<Settings>("/api/settings"),
   updateSettings: (data: { navidrome_url: string; username: string; password: string }) =>

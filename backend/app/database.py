@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+from sqlalchemy import inspect, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -34,12 +36,28 @@ def _ensure_sqlite_dir(url: str) -> None:
 
 
 async def init_db() -> None:
-    """Crée les tables au démarrage (pas de migrations pour l'instant)."""
+    """Crée les tables et applique les petites migrations SQLite intégrées."""
     from . import models  # noqa: F401  (enregistre les modèles)
 
     _ensure_sqlite_dir(_config.database_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if conn.dialect.name == "sqlite":
+            await conn.run_sync(_migrate_sqlite)
+
+
+def _migrate_sqlite(conn: Connection) -> None:
+    """Ajoute les colonnes compatibles aux bases créées par les versions précédentes."""
+    migrations = {
+        "library_tracks": {"cover_art": "VARCHAR(128)"},
+        "library_albums": {"cover_art": "VARCHAR(128)"},
+    }
+    inspector = inspect(conn)
+    for table, additions in migrations.items():
+        existing = {column["name"] for column in inspector.get_columns(table)}
+        for column, sql_type in additions.items():
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

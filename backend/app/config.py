@@ -29,6 +29,15 @@ class AppConfig(BaseSettings):
     yoto_audience: str = "https://api.yotoplay.com"
     yoto_scopes: str = "user:content:manage offline_access"
 
+    # Protection optionnelle de l'interface et de l'API via OpenID Connect.
+    auth_enabled: bool = False
+    oidc_issuer_url: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_scopes: str = "openid profile email"
+    session_secret: str = ""
+    session_max_age_seconds: int = 604800
+
 
 @lru_cache
 def get_config() -> AppConfig:

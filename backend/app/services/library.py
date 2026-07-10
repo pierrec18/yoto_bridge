@@ -45,6 +45,7 @@ class LibrarySyncService:
                     year=t.year,
                     duration=t.duration,
                     rating=t.rating,
+                    cover_art=t.cover_art or album.cover_art,
                 )
 
         await self._replace(LibraryTrack, tracks_seen.values())
@@ -59,6 +60,7 @@ class LibrarySyncService:
                     year=a.year,
                     genre=a.genre,
                     song_count=a.song_count,
+                    cover_art=a.cover_art,
                 )
                 for a in albums
             ],

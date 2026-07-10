@@ -55,6 +55,12 @@ class FakeProvider(MusicProvider):
     async def search(self, filters: SearchFilters, limit: int = 100) -> list[ProviderTrack]:
         return list(self.tracks.values())
 
+    async def get_cover_art(self, cover_id: str, *, size: int = 300) -> StreamResponse:
+        async def body() -> AsyncIterator[bytes]:
+            yield b"fake-image"
+
+        return StreamResponse(content_type="image/jpeg", status_code=200, body=body())
+
     async def stream(
         self,
         track_id: str,
