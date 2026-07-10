@@ -1,0 +1,7 @@
+body {
+  margin: 0;
+}
+
+.picker-row:hover {
+  background-color: var(--mantine-color-default-hover);
+}

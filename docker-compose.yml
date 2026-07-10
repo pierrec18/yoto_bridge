@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    container_name: yoto-bridge
+    ports:
+      - "8000:8000"
+    environment:
+      # La base et les logs sont persistés dans le volume monté.
+      YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
+      YOTO_SYNC_INTERVAL_SECONDS: "3600"
+      YOTO_STREAM_DEFAULT_BITRATE: "192"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: yoto-bridge-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
