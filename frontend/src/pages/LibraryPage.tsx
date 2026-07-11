@@ -28,7 +28,7 @@ import {
   IconSearch,
   IconUser,
 } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api } from "../api";
 import type { Album, Artist, Card, Track } from "../types";
@@ -52,8 +52,12 @@ export function LibraryPage() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [albumTracks, setAlbumTracks] = useState<Track[]>([]);
+  const [artistAlbums, setArtistAlbums] = useState<Album[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
+  const albumRequest = useRef(0);
+  const artistRequest = useRef(0);
 
   const [addTrack, setAddTrack] = useState<Track | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
@@ -63,13 +67,23 @@ export function LibraryPage() {
 
   useEffect(() => {
     if (selectedArtist || selectedAlbum) return;
+    let active = true;
     if (view === "tracks") {
-      api.searchLibrary(debounced, 100).then(setTracks).catch(() => setTracks([]));
+      api.searchLibrary(debounced, 100)
+        .then((rows) => active && setTracks(rows))
+        .catch(() => active && setTracks([]));
     } else if (view === "albums") {
-      api.albums(debounced).then(setAlbums).catch(() => setAlbums([]));
+      api.albums(debounced)
+        .then((rows) => active && setAlbums(rows))
+        .catch(() => active && setAlbums([]));
     } else {
-      api.artists(debounced).then(setArtists).catch(() => setArtists([]));
+      api.artists(debounced)
+        .then((rows) => active && setArtists(rows))
+        .catch(() => active && setArtists([]));
     }
+    return () => {
+      active = false;
+    };
   }, [view, debounced, selectedArtist, selectedAlbum]);
 
   const changeView = (next: string | null) => {
@@ -77,25 +91,57 @@ export function LibraryPage() {
     setView(next as LibraryView);
     setSelectedArtist(null);
     setSelectedAlbum(null);
+    setArtistAlbums([]);
+    setAlbumTracks([]);
+    artistRequest.current += 1;
+    albumRequest.current += 1;
     setQuery("");
   };
 
   const openAlbum = async (album: Album) => {
+    const request = ++albumRequest.current;
     setSelectedAlbum(album);
-    setTracks(await api.albumTracks(album.id));
+    setAlbumTracks([]);
+    try {
+      const rows = await api.albumTracks(album.id);
+      if (request === albumRequest.current) setAlbumTracks(rows);
+    } catch (error) {
+      if (request !== albumRequest.current) return;
+      notifications.show({
+        title: "Album inaccessible",
+        message: (error as Error).message,
+        color: "red",
+      });
+    }
   };
 
   const openArtist = async (artist: Artist) => {
+    const request = ++artistRequest.current;
     setSelectedArtist(artist);
-    setAlbums(await api.artistAlbums(artist.id));
+    setArtistAlbums([]);
+    try {
+      const rows = await api.artistAlbums(artist.id);
+      if (request === artistRequest.current) setArtistAlbums(rows);
+    } catch (error) {
+      if (request !== artistRequest.current) return;
+      notifications.show({
+        title: "Artiste inaccessible",
+        message: (error as Error).message,
+        color: "red",
+      });
+    }
   };
 
   const goBack = () => {
     if (selectedAlbum) {
+      albumRequest.current += 1;
       setSelectedAlbum(null);
+      setAlbumTracks([]);
       return;
     }
+    artistRequest.current += 1;
     setSelectedArtist(null);
+    setArtistAlbums([]);
   };
 
   const openAdd = async (track: Track) => {
@@ -168,11 +214,14 @@ export function LibraryPage() {
       ? selectedArtist.name
       : "Bibliothèque";
 
+  const visibleTracks = selectedAlbum ? albumTracks : tracks;
+  const visibleAlbums = selectedArtist ? artistAlbums : albums;
+
   const empty =
     selectedAlbum || view === "tracks"
-      ? tracks.length === 0
+      ? visibleTracks.length === 0
       : selectedArtist || view === "albums"
-        ? albums.length === 0
+        ? visibleAlbums.length === 0
         : artists.length === 0;
 
   return (
@@ -182,7 +231,7 @@ export function LibraryPage() {
           <Title order={2}>{contextTitle}</Title>
           {(selectedArtist || selectedAlbum) && (
             <Text size="sm" c="dimmed">
-              {selectedAlbum?.artist || `${albums.length} albums`}
+              {selectedAlbum?.artist || `${visibleAlbums.length} albums`}
             </Text>
           )}
         </div>
@@ -223,9 +272,9 @@ export function LibraryPage() {
       {empty ? (
         <Text c="dimmed">Aucun résultat. Pense à lancer une synchronisation.</Text>
       ) : selectedAlbum || view === "tracks" ? (
-        <TrackResults tracks={tracks} onAdd={openAdd} showNumbers={Boolean(selectedAlbum)} />
+        <TrackResults tracks={visibleTracks} onAdd={openAdd} showNumbers={Boolean(selectedAlbum)} />
       ) : selectedArtist || view === "albums" ? (
-        <AlbumResults albums={albums} onOpen={openAlbum} />
+        <AlbumResults albums={visibleAlbums} onOpen={openAlbum} />
       ) : (
         <ArtistResults artists={artists} onOpen={openArtist} />
       )}

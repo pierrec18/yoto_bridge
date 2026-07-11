@@ -5,15 +5,23 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import Delivery, PlaybackMode
 
 
 class SettingsIn(BaseModel):
-    navidrome_url: str
-    username: str
-    password: str
+    navidrome_url: str = Field(min_length=1, max_length=512)
+    username: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=1, max_length=1024)
+
+    @field_validator("navidrome_url")
+    @classmethod
+    def validate_navidrome_url(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("L'URL Navidrome doit commencer par http:// ou https://")
+        return value
 
 
 class SettingsOut(BaseModel):
@@ -57,9 +65,9 @@ class CardTrackOut(BaseModel):
 
 
 class CardIn(BaseModel):
-    name: str
-    description: str | None = None
-    image_url: str | None = None
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=2000)
+    image_url: str | None = Field(default=None, max_length=512)
     track_count: int = Field(default=1, ge=1, le=100)
 
 

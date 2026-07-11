@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Settings
 from .base import MusicProvider
 from .subsonic import SubsonicProvider
+from ..secrets import decrypt
 
 
 class ProviderNotConfigured(RuntimeError):
@@ -14,7 +15,9 @@ class ProviderNotConfigured(RuntimeError):
 
 
 _BUILDERS = {
-    "navidrome": lambda s: SubsonicProvider(s.navidrome_url, s.username, s.password),
+    "navidrome": lambda s: SubsonicProvider(
+        s.navidrome_url, s.username, decrypt(s.password) or ""
+    ),
 }
 
 
@@ -23,7 +26,7 @@ async def get_settings(session: AsyncSession) -> Settings | None:
 
 
 def build_provider(settings: Settings) -> MusicProvider:
-    if not settings.navidrome_url or not settings.username or not settings.password:
+    if not settings.navidrome_url or not settings.username or not decrypt(settings.password):
         raise ProviderNotConfigured("Source musicale non configurée")
     builder = _BUILDERS.get(settings.provider)
     if builder is None:

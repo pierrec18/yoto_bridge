@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_config
 from ..models import Card, CardTrack, Delivery, PlaybackMode, Settings, YotoIcon, YotoMedia
 from ..providers.base import MusicProvider
+from ..secrets import decrypt
 from ..yoto.client import YotoClient, YotoError
 
 logger = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ class PublishService:
                 raise PublishError(
                     f"Piste {track.track_number} : le mode hors ligne exige un morceau fixe"
                 )
-        if not self._settings.stream_token and any(
+        if not decrypt(self._settings.stream_token) and any(
             t.delivery == Delivery.STREAM for t in card.tracks
         ):
             raise PublishError("Token de streaming manquant")
@@ -145,7 +146,8 @@ class PublishService:
 
     def _stream_track(self, card: Card, track: CardTrack, key: str) -> dict[str, Any]:
         base = get_config().public_base_url.rstrip("/")
-        url = f"{base}/stream/{card.id}/{track.track_number}?t={self._settings.stream_token}"
+        token = decrypt(self._settings.stream_token)
+        url = f"{base}/stream/{card.id}/{track.track_number}?t={token}"
         return {
             "key": key,
             "title": track.label or f"Piste {track.track_number}",

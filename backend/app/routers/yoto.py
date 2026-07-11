@@ -16,6 +16,7 @@ from ..models import Card
 from ..providers.factory import ProviderNotConfigured, build_provider
 from ..schemas import PublishResult, YotoConfigIn, YotoLoginOut, YotoStatus
 from ..security import get_or_create_settings
+from ..secrets import decrypt, encrypt, is_set
 from ..yoto import oauth
 from ..yoto.client import YotoClient, YotoError, YotoNotConnected
 
@@ -29,7 +30,7 @@ async def status(session: AsyncSession = Depends(get_session)) -> YotoStatus:
     await session.commit()
     return YotoStatus(
         client_id_set=bool(settings.yoto_client_id),
-        connected=bool(settings.yoto_refresh_token),
+        connected=is_set(settings.yoto_refresh_token),
         redirect_uri=oauth.redirect_uri(),
     )
 
@@ -43,7 +44,7 @@ async def set_config(
     await session.commit()
     return YotoStatus(
         client_id_set=True,
-        connected=bool(settings.yoto_refresh_token),
+        connected=is_set(settings.yoto_refresh_token),
         redirect_uri=oauth.redirect_uri(),
     )
 
@@ -55,8 +56,8 @@ async def login(session: AsyncSession = Depends(get_session)) -> YotoLoginOut:
         raise HTTPException(status_code=409, detail="client_id Yoto non configuré")
     verifier, challenge = oauth.generate_pkce()
     state = oauth.generate_state()
-    settings.yoto_pkce_verifier = verifier
-    settings.yoto_pkce_state = state
+    settings.yoto_pkce_verifier = encrypt(verifier)
+    settings.yoto_pkce_state = encrypt(state)
     await session.commit()
     return YotoLoginOut(
         authorize_url=oauth.build_authorize_url(settings.yoto_client_id, state, challenge)
@@ -69,9 +70,11 @@ async def callback(
 ) -> RedirectResponse:
     settings = await get_or_create_settings(session)
     frontend = f"{get_config().public_base_url.rstrip('/')}/settings"
-    if not settings.yoto_pkce_state or state != settings.yoto_pkce_state:
+    stored_state = decrypt(settings.yoto_pkce_state)
+    verifier = decrypt(settings.yoto_pkce_verifier)
+    if not stored_state or state != stored_state:
         return RedirectResponse(f"{frontend}?yoto=error", status_code=303)
-    if not settings.yoto_client_id or not settings.yoto_pkce_verifier:
+    if not settings.yoto_client_id or not verifier:
         return RedirectResponse(f"{frontend}?yoto=error", status_code=303)
 
     import httpx
@@ -79,7 +82,7 @@ async def callback(
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             tokens = await oauth.exchange_code(
-                settings.yoto_client_id, code, settings.yoto_pkce_verifier, client
+                settings.yoto_client_id, code, verifier, client
             )
         except httpx.HTTPStatusError:
             logger.exception("Échec de l'échange OAuth Yoto")
@@ -87,8 +90,8 @@ async def callback(
 
     from datetime import datetime, timedelta, timezone
 
-    settings.yoto_access_token = tokens.access_token
-    settings.yoto_refresh_token = tokens.refresh_token
+    settings.yoto_access_token = encrypt(tokens.access_token)
+    settings.yoto_refresh_token = encrypt(tokens.refresh_token)
     settings.yoto_token_expires_at = datetime.now(timezone.utc) + timedelta(
         seconds=tokens.expires_in
     )

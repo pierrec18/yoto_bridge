@@ -13,11 +13,16 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .auth import OIDCAuthMiddleware
 from .config import get_config
+from .csrf import CSRFMiddleware
 from .database import init_db
 from .routers import auth, cards, library, settings, stats, stream, sync, yoto
 from .scheduler import periodic_sync
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# Les URLs Subsonic et /stream contiennent des jetons à usage limité. Ne pas
+# les recopier dans les logs d'accès ou dans les logs de transport HTTP.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
@@ -44,13 +49,17 @@ app = FastAPI(
 _config = get_config()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in _config.cors_origins.split(",")],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_config.cors_origin_list(),
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
+    allow_credentials=True,
 )
 # SessionMiddleware doit envelopper le middleware d'authentification pour que
 # request.session soit disponible pendant le contrôle d'accès.
 app.add_middleware(OIDCAuthMiddleware)
+# Ce middleware doit être ajouté avant SessionMiddleware : il s'exécute alors
+# après la création de request.session, mais avant le routage FastAPI.
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=_config.session_secret or "auth-disabled",

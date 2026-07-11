@@ -10,6 +10,7 @@ import httpx
 
 from ..config import get_config
 from ..models import Settings
+from ..secrets import decrypt, encrypt
 from . import oauth
 
 
@@ -52,20 +53,22 @@ class YotoClient:
 
     async def _access_token(self) -> str:
         s = self._settings
-        if not s.yoto_refresh_token or not s.yoto_client_id:
+        refresh_token = decrypt(s.yoto_refresh_token)
+        access_token = decrypt(s.yoto_access_token)
+        if not refresh_token or not s.yoto_client_id:
             raise YotoNotConnected("Compte Yoto non connecté")
         valid = (
-            s.yoto_access_token
+            access_token
             and s.yoto_token_expires_at
             and _as_utc(s.yoto_token_expires_at) > _now() + timedelta(seconds=60)
         )
         if valid:
-            return s.yoto_access_token  # type: ignore[return-value]
+            return access_token  # type: ignore[return-value]
         # Rafraîchissement.
-        tokens = await oauth.refresh_token(s.yoto_client_id, s.yoto_refresh_token, self._client)
-        s.yoto_access_token = tokens.access_token
+        tokens = await oauth.refresh_token(s.yoto_client_id, refresh_token, self._client)
+        s.yoto_access_token = encrypt(tokens.access_token)
         if tokens.refresh_token:  # rotation : le refresh token change à chaque usage
-            s.yoto_refresh_token = tokens.refresh_token
+            s.yoto_refresh_token = encrypt(tokens.refresh_token)
         s.yoto_token_expires_at = _now() + timedelta(seconds=tokens.expires_in)
         await self._commit()
         return tokens.access_token
@@ -98,8 +101,9 @@ class YotoClient:
         for _ in range(attempts):
             resp = await self._client.get(url, headers=headers)
             resp.raise_for_status()
-            transcode = resp.json().get("transcode", {})
-            if transcode.get("transcodedSha256"):
+            payload = resp.json()
+            transcode = payload.get("transcode", {}) if isinstance(payload, dict) else {}
+            if isinstance(transcode, dict) and transcode.get("transcodedSha256"):
                 return transcode
             await asyncio.sleep(interval)
         raise YotoError("Transcodage Yoto trop long (timeout)")
@@ -115,7 +119,9 @@ class YotoClient:
             headers={**await self._headers(), "Content-Type": content_type},
         )
         if resp.status_code >= 400:
-            raise YotoError(f"Upload icône Yoto {resp.status_code} : {resp.text}")
+            # Ne pas renvoyer le corps distant : certains fournisseurs y
+            # incluent des détails d'authentification ou des identifiants.
+            raise YotoError(f"Upload icône Yoto refusé (HTTP {resp.status_code})")
         media_id = resp.json().get("displayIcon", {}).get("mediaId")
         if not media_id:
             raise YotoError("Réponse d'upload d'icône Yoto invalide")
@@ -130,8 +136,11 @@ class YotoClient:
             headers={**await self._headers(), "Content-Type": "application/json"},
         )
         if resp.status_code >= 400:
-            raise YotoError(f"Yoto /content {resp.status_code} : {resp.text}")
-        return resp.json()
+            raise YotoError(f"Publication Yoto refusée (HTTP {resp.status_code})")
+        payload = resp.json()
+        if not isinstance(payload, dict):
+            raise YotoError("Réponse Yoto invalide")
+        return payload
 
     async def close(self) -> None:
         await self._client.aclose()

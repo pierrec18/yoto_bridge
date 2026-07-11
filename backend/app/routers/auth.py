@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel
 
 from ..config import get_config
@@ -102,7 +102,8 @@ async def callback(request: Request) -> RedirectResponse:
     return RedirectResponse(destination, status_code=303)
 
 
-@router.get("/logout")
-async def logout(request: Request) -> RedirectResponse:
+@router.post("/logout", status_code=204)
+async def logout(request: Request) -> Response:
+    """Déconnexion explicite : POST pour éviter une déconnexion CSRF par image."""
     request.session.clear()
-    return RedirectResponse("/", status_code=303)
+    return Response(status_code=204)

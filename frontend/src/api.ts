@@ -21,9 +21,21 @@ import type {
 } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const method = options?.method?.toUpperCase() ?? "GET";
+  const csrf = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("yoto_csrf="))
+    ?.slice("yoto_csrf=".length);
+  const headers = new Headers(options?.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (csrf && !["GET", "HEAD", "OPTIONS"].includes(method)) {
+    headers.set("X-CSRF-Token", decodeURIComponent(csrf));
+  }
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    credentials: "same-origin",
+    headers,
   });
   if (!res.ok) {
     if (res.status === 401 && !url.startsWith("/api/auth/")) {
@@ -53,6 +65,7 @@ export interface CardTrackInput {
 
 export const api = {
   authStatus: () => request<AuthStatus>("/api/auth/status"),
+  logout: () => request<void>("/api/auth/logout", { method: "POST" }),
 
   // Settings
   getSettings: () => request<Settings>("/api/settings"),

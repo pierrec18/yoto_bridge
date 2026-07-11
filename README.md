@@ -1,194 +1,237 @@
-# Yoto Radio Server (Yoto Bridge)
+# Yoto Bridge
 
-Serveur qui permet d'utiliser une bibliothèque **Navidrome** comme source audio
-pour des cartes **Yoto Make Your Own (MYO)**. Le contenu n'est jamais stocké sur
-la carte : chaque piste MYO pointe vers une URL de streaming servie par ce
-serveur, qui choisit dynamiquement le morceau et le proxifie depuis Navidrome.
+Passerelle entre une bibliothèque **Navidrome/Subsonic** et les cartes **Yoto
+Make Your Own (MYO)**. L'interface permet de synchroniser la bibliothèque,
+configurer les cartes, choisir un morceau ou une stratégie de lecture, puis
+publier la carte sur Yoto (streaming ou hors ligne).
 
-> État actuel : **backend fonctionnel + interface web React**. Validé de bout en
-> bout contre un vrai Navidrome (config, synchro, cartes, sélection de contenu,
-> streaming MP3 avec requêtes `Range`). L'intégration de l'API officielle Yoto
-> (§18) reste à faire.
+Le projet est prévu pour être déployé avec Docker Compose ou depuis Arcane.
+L'interface est une PWA installable sur mobile.
 
-## Comment ça marche
+## Fonctionnement
 
-```
-Carte Yoto ──GET /stream/{card}/{track}──▶ Yoto Bridge ──stream.view (MP3)──▶ Navidrome
-```
-
-1. Une carte MYO déclare N pistes de type `stream`, chacune ciblant
-   `GET /stream/{card_id}/{track_number}` sur ce serveur.
-2. À la lecture, le serveur retrouve la **stratégie** associée à cette piste
-   (morceau fixe, playlist, album, aléatoire, smart, recherche), choisit un
-   morceau, puis demande à Navidrome un transcodage MP3 via l'API Subsonic
-   `stream.view` et **proxifie** le flux.
-3. Les identifiants et l'URL Navidrome ne sont **jamais** exposés à la Yoto (§14).
-
-Les FLAC ne sont jamais décodés localement : le transcodage est délégué à
-Navidrome.
-
-### Point important sur les requêtes `Range`
-
-La Yoto peut ré-interroger la même URL plusieurs fois pour une seule lecture
-(requêtes `Range` de seek, reprises réseau). Pour éviter de tirer un nouveau
-morceau à chaque requête HTTP, un petit cache TTL par `(carte, piste)` renvoie le
-**même** morceau pendant une courte fenêtre (`YOTO_RESOLUTION_TTL_SECONDS`, 8 s
-par défaut). La sémantique exacte piste-suivante / précédente devra être affinée
-sur du matériel réel — c'est le premier point à valider en test physique.
-
-### Token de streaming
-
-Chaque URL `/stream` exige un jeton partagé (`?t=...`), généré automatiquement et
-stocké côté serveur. Il est intégré aux URLs copiées depuis l'éditeur de carte
-(donc déposées sur la Yoto). En cas de fuite, un bouton **Réglages →
-Réinitialiser** régénère le jeton : les anciennes URLs renvoient alors `403` et
-il suffit de recopier les nouvelles. Endpoint : `POST /api/settings/reset-token`.
-
-## Modes de lecture (§5)
-
-| Mode       | `config` attendu                                             |
-|------------|-------------------------------------------------------------|
-| `fixed`    | `{"song_id": "..."}`                                         |
-| `playlist` | `{"playlist_id": "..."}` (lecture séquentielle, progression) |
-| `album`    | `{"album_id": "..."}` (lecture séquentielle, progression)    |
-| `random`   | `{}` (évite le morceau précédent)                            |
-| `smart`    | `{}` (évite morceau, artiste et album précédents)            |
-| `search`   | `{"query": "...", "genre": "...", "min_rating": 4, "min_year": 2010}` |
-
-## Architecture du code
-
-```
-backend/
-  app/
-    main.py            # app FastAPI, CORS, lifespan + scheduler
-    config.py          # configuration via variables d'env (YOTO_*)
-    database.py        # moteur SQLAlchemy async + sessions
-    models.py          # tables (settings, cards, card_tracks, history, cache…)
-    schemas.py         # modèles Pydantic de l'API
-    scheduler.py       # synchronisation périodique (démarrage + horaire)
-    providers/
-      base.py          # interface MusicProvider (abstraction source, §16)
-      subsonic.py      # implémentation Navidrome (API Subsonic)
-      factory.py       # construction du provider depuis les réglages
-    services/
-      library.py       # synchronisation bibliothèque -> cache SQLite
-      playback.py      # résolution piste -> morceau (cœur du système)
-    routers/           # settings, cards, library, sync, stats, stream
-  tests/               # pytest (provider, playback, API)
+```text
+Yoto ── GET /stream/{carte}/{piste}?t=... ──> Yoto Bridge ──> Navidrome
+                                               (API Subsonic)
 ```
 
-L'abstraction `MusicProvider` (§16) garantit que le reste de l'application ne
-dépend jamais directement de Navidrome. Futurs providers : Plex, Jellyfin, Emby,
-Audiobookshelf.
+Le serveur ne transmet jamais l'URL ni le mot de passe Navidrome à Yoto. Pour
+une piste en streaming, il choisit le morceau selon sa stratégie puis relaie
+le MP3 transcodé par Navidrome. Pour une piste hors ligne, il envoie le fichier
+à l'API officielle Yoto et mémorise le média déjà téléversé.
 
-## API REST (extrait)
+Modes disponibles : `fixed`, `playlist`, `album`, `random`, `smart` et
+`search`. Le cache SQLite contient la bibliothèque et les cartes ; il est
+persisté dans le dossier monté sur `/app/data`.
 
-| Méthode & route | Rôle |
-|-----------------|------|
-| `GET/PUT /api/settings`, `POST /api/settings/test` | Config Navidrome + test connexion |
-| `POST /api/sync` | Synchronisation manuelle |
-| `GET /api/library/search\|playlists\|albums\|artists\|genres` | Bibliothèque en cache |
-| `GET/POST/PUT/DELETE /api/cards[...]` | CRUD cartes |
-| `POST /api/cards/{id}/duplicate` | Dupliquer une carte |
-| `PUT /api/cards/{id}/tracks/{n}` | Configurer une piste |
-| `POST /api/cards/{id}/generate` | Génération automatique du mapping (§9) |
-| `GET /api/cards/{id}/history` | Historique de la carte |
-| `GET /api/stats/dashboard`, `/api/stats/top-tracks` | Dashboard & stats |
-| `GET /stream/{card}/{track}` | **Streaming proxifié pour la Yoto** |
+## Déploiement recommandé (Ubuntu + Arcane)
 
-Documentation interactive OpenAPI : `http://localhost:8000/docs`.
+### 1. Préparer le dépôt et les secrets
 
-## Lancer en local
+Le fichier `.env` doit rester sur le serveur et ne doit jamais être commité.
+Depuis le dossier du projet :
+
+```bash
+cp .env.example .env
+mkdir -p /mnt/docker/yoto-bridge/data
+sudo chown -R 10001:10001 /mnt/docker/yoto-bridge/data
+openssl rand -hex 32       # renseigner le résultat dans YOTO_SESSION_SECRET
+openssl rand -hex 32       # renseigner le résultat dans YOTO_SECRETS_KEY
+chmod 600 .env
+```
+
+`YOTO_SECRETS_KEY` est la clé stable qui chiffre dans SQLite le mot de passe
+Navidrome, les jetons Yoto et le token de streaming. La sauvegarder dans le
+gestionnaire de secrets d'Arcane : sans elle, une base chiffrée ne peut pas
+être relue. Ne jamais la régénérer lors d'une mise à jour.
+
+Renseigner ensuite au minimum :
+
+```dotenv
+YOTO_DATA_DIR=/mnt/docker/yoto-bridge/data
+YOTO_PUBLIC_BASE_URL=https://yotobridge.example.com
+YOTO_AUTH_ENABLED=true
+YOTO_OIDC_ISSUER_URL=https://id.example.com
+YOTO_OIDC_CLIENT_ID=...
+YOTO_OIDC_CLIENT_SECRET=...
+YOTO_SESSION_SECRET=...
+YOTO_SECRETS_KEY=...
+```
+
+Pour un premier démarrage local sans Pocket ID, laisser
+`YOTO_AUTH_ENABLED=false` et utiliser l'URL locale ; réactiver OIDC avant
+d'exposer le service sur Internet.
+
+### 2. Configurer le client OIDC
+
+Dans Pocket ID (ou un autre fournisseur OIDC), déclarer exactement :
+
+```text
+https://yotobridge.example.com/api/auth/callback
+```
+
+Le domaine de `YOTO_PUBLIC_BASE_URL`, le domaine utilisé par le navigateur et
+celui du callback doivent être identiques. En production, l'URL publique doit
+être en HTTPS.
+
+### 3. Démarrer avec Docker Compose
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose logs -f backend frontend
+```
+
+L'interface écoute par défaut sur `127.0.0.1:8081`. Le reverse proxy (Caddy,
+Traefik, Nginx Proxy Manager, etc.) doit terminer TLS et rediriger le domaine
+vers `http://127.0.0.1:8081`. Si le reverse proxy est lui-même un conteneur,
+placez-le sur le même réseau Docker ou exposez explicitement le port avec un
+pare-feu : le bind localhost est volontaire pour éviter une exposition LAN.
+
+Le backend n'est pas publié sur un port de l'hôte. Les routes `/api`,
+`/stream`, `/docs` et `/health` sont proxifiées par Nginx dans le conteneur
+frontend.
+
+Dans Arcane, créer un projet depuis ce dépôt, ajouter les variables du `.env`
+dans l'environnement du projet, puis utiliser le même `docker-compose.yml`.
+Le dossier `/mnt/docker/yoto-bridge/data` doit être un volume persistant du
+projet, pas un dossier temporaire de synchronisation Git.
+
+### 4. Initialiser l'application
+
+1. Ouvrir le domaine et se connecter via OIDC.
+2. Dans **Réglages**, renseigner l'URL HTTPS de Navidrome, l'utilisateur et le
+   mot de passe dédié à Bridge, puis tester la connexion.
+3. Dans **Dashboard**, lancer une synchronisation.
+4. Créer une carte, configurer ses pistes et choisir **Publier sur Yoto**.
+5. Associer la carte publiée dans l'application Yoto. Une piste streaming
+   utilise le token partagé ; **Réglages → Réinitialiser le token** invalide
+   immédiatement les anciennes URLs.
+
+## Variables importantes
+
+| Variable | Rôle |
+| --- | --- |
+| `YOTO_DATA_DIR` | Dossier persistant monté sur `/app/data` |
+| `YOTO_PUBLIC_BASE_URL` | URL externe utilisée par Yoto et les callbacks OAuth |
+| `YOTO_AUTH_ENABLED` | Active la protection OIDC (recommandé en production) |
+| `YOTO_OIDC_*` | Paramètres du fournisseur OIDC/Pocket ID |
+| `YOTO_SESSION_SECRET` | Signature des sessions web, 32 caractères minimum |
+| `YOTO_SECRETS_KEY` | Chiffrement des secrets en base, à conserver à vie |
+| `YOTO_CORS_ORIGINS` | Origines autorisées, séparées par des virgules ; vide = même origine |
+| `YOTO_IMAGE_TAG` | Tag ou SHA d'image GHCR à déployer |
+| `YOTO_WEB_PORT` | Port local du frontend (8081 par défaut) |
+| `YOTO_SYNC_INTERVAL_SECONDS` | Intervalle de synchronisation (60–86400 s) |
+
+Les images GHCR utilisent `latest` par défaut pour une installation simple.
+Pour un déploiement reproductible, définir `YOTO_IMAGE_TAG` sur un tag semver
+ou un tag SHA publié par la CI, puis mettre à jour volontairement.
+
+Le backend refuse volontairement de démarrer avec une URL publique externe si
+`YOTO_AUTH_ENABLED` ou `YOTO_SECRETS_KEY` manque : cela évite de publier par
+accident une interface non protégée ou des identifiants en clair.
+
+## Sécurité intégrée
+
+- OIDC optionnel, validation stricte des secrets et cookie de session `Secure`
+  lorsque l'URL publique est HTTPS.
+- Protection CSRF des requêtes API mutantes lorsque OIDC est actif.
+- Chiffrement Fernet des secrets SQLite avec `YOTO_SECRETS_KEY` ; les anciennes
+  valeurs en clair restent lisibles et sont chiffrées à leur prochaine écriture.
+- Token aléatoire obligatoire sur chaque URL `/stream`, comparable en temps
+  constant et révocable.
+- Backend non exposé sur l'hôte, conteneur backend non-root, filesystem en
+  lecture seule, `no-new-privileges`, capabilities supprimées et healthchecks.
+- Headers Nginx CSP, anti-clickjacking, `nosniff`, politique de référent et
+  permissions navigateur ; logs d'accès désactivés sur `/stream` et logs
+  `httpx` silencés pour éviter les jetons dans les journaux.
+- Limites de validation sur URLs, tailles, bitrate, durée de session et nombre
+  de pistes (1 à 100).
+
+Mesures d'exploitation à conserver : HTTPS obligatoire via le reverse proxy,
+pare-feu limitant le port du proxy, mises à jour régulières des images,
+rotation du mot de passe Navidrome et sauvegardes chiffrées de `data/` **avec**
+`YOTO_SECRETS_KEY`.
+
+## Sauvegarde et mise à jour
+
+Arrêter brièvement le backend avant une sauvegarde cohérente :
+
+```bash
+docker compose stop backend
+sqlite3 /mnt/docker/yoto-bridge/data/yoto_bridge.sqlite \
+  ".backup '/mnt/docker/yoto-bridge/data/yoto_bridge.backup.sqlite'"
+docker compose start backend
+```
+
+Conserver aussi `.env` dans un coffre séparé. Pour mettre à jour :
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+Les petites migrations SQLite sont appliquées au démarrage. En cas de retour
+arrière, redéfinir `YOTO_IMAGE_TAG` sur l'ancien tag ; ne supprimer ni le
+volume de données ni la clé de chiffrement.
+
+## Développement local
 
 Backend :
 
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
-uvicorn app.main:app --reload            # http://localhost:8000
+pytest
+uvicorn app.main:app --reload --port 8000
 ```
 
-Frontend (Vite proxifie `/api` et `/stream` vers le backend) :
+Frontend :
 
 ```bash
 cd frontend
-npm install
-npm run dev                              # http://localhost:5173
+npm ci
+npm run dev
 ```
 
-Ensuite, dans l'interface : **Réglages** → renseigner l'URL/identifiants
-Navidrome et tester la connexion, puis **Dashboard → Synchroniser**, puis créer
-une **Carte** et configurer ses pistes.
-
-## Docker
+Pour construire les images localement :
 
 ```bash
-docker compose up --build
-# Interface web : http://localhost:8080
-# API / OpenAPI  : http://localhost:8000/docs
-# Données persistées dans ./data
+docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
 ```
 
-### Authentification OIDC / Pocket ID
+## API et structure
 
-L'authentification est optionnelle et désactivée par défaut. Les pages, l'API et
-la documentation sont protégées lorsqu'elle est active. Les URL `/stream/...`
-restent publiques, mais exigent toujours leur jeton partagé afin que les lecteurs
-Yoto puissent les lire.
+La documentation OpenAPI est disponible sur `/docs` lorsque l'utilisateur est
+authentifié. Les principales routes sont :
 
-1. Dans Pocket ID, créer un client OIDC avec cette URL de callback :
-   `https://votre-domaine/api/auth/callback`.
-2. Copier `.env.example` vers `.env`, renseigner le client ID, le secret et
-   générer `YOTO_SESSION_SECRET` avec `openssl rand -hex 32`.
-3. Passer `YOTO_AUTH_ENABLED=true`, puis reconstruire le backend.
+| Route | Fonction |
+| --- | --- |
+| `/api/auth/*` | Statut et flux OIDC |
+| `/api/settings` | Source Navidrome et token de streaming |
+| `/api/sync` | Synchronisation manuelle |
+| `/api/library/*` | Recherche, artistes, albums, pochettes |
+| `/api/cards/*` | CRUD cartes, pistes, génération, historique |
+| `/api/yoto/*` | Connexion Yoto et publication |
+| `/api/stats/*` | Tableau de bord et statistiques |
+| `/stream/{card}/{track}` | Flux audio Yoto, token `t` obligatoire |
 
-Exemple :
-
-```dotenv
-YOTO_AUTH_ENABLED=true
-YOTO_OIDC_ISSUER_URL=https://id.example.com
-YOTO_OIDC_CLIENT_ID=...
-YOTO_OIDC_CLIENT_SECRET=...
-YOTO_OIDC_SCOPES=openid profile email
-YOTO_SESSION_SECRET=...
+```text
+backend/app/
+  main.py, config.py, auth.py, csrf.py, secrets.py
+  database.py, models.py, schemas.py
+  providers/       # abstraction MusicProvider + Navidrome/Subsonic
+  services/        # synchronisation, lecture, publication Yoto
+  routers/         # API REST
+frontend/src/      # React + Vite + Mantine + PWA
 ```
 
-Après une mise à jour ajoutant les pochettes, lancer une synchronisation de la
-bibliothèque. Les pochettes sont alors affichées dans la recherche et l'éditeur.
-Lors de la publication, Yoto les convertit automatiquement en icônes 16×16 ; le
-résultat est mis en cache pour éviter de téléverser plusieurs fois la même image.
+## Licence et contribution
 
-### Installation mobile (PWA)
-
-L'interface est installable comme application dès qu'elle est servie en HTTPS.
-
-- Android / Chrome : ouvrir le bridge puis choisir **Installer l'application**
-  (le bouton **Installer** apparaît aussi dans l'en-tête lorsqu'il est disponible).
-- iPhone / Safari : bouton **Partager**, puis **Sur l'écran d'accueil**.
-
-Le shell et les ressources visuelles sont disponibles hors connexion. Les actions
-sur la bibliothèque, les cartes et les flux audio nécessitent toujours le serveur.
-
-## Tests
-
-```bash
-cd backend && source .venv/bin/activate
-pytest
-```
-
-## Interface web
-
-React + Vite + Mantine (`frontend/`). Pages : Dashboard (état + stats + synchro),
-Bibliothèque (recherche instantanée), Cartes (CRUD + duplication), Édition de
-carte (mapping des pistes, sélecteur de contenu multi-onglets, génération
-automatique). Aucune logique métier côté front : tout passe par l'API REST.
-
-## Prochaines étapes
-
-- Intégration de l'API officielle Yoto (§18) : publication automatique des
-  playlists MYO et des pistes `stream`.
-- Chiffrement du mot de passe Navidrome au repos.
-- Validation de la sémantique suivant/précédent sur matériel Yoto réel.
-- Statistiques avancées (top morceaux/cartes, durée d'écoute) déjà amorcées côté
-  API (`/api/stats/top-tracks`).
+Avant une contribution, lancer les tests backend et vérifier que `.env`, la
+base SQLite et les journaux ne sont jamais ajoutés à Git. Les images sont
+construites par GitHub Actions et publiées sur GHCR pour les branches/tags
+configurés dans `.github/workflows/build-images.yml`.

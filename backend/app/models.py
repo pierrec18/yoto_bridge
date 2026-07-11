@@ -30,7 +30,7 @@ class PlaybackMode(str, enum.Enum):
 class Delivery(str, enum.Enum):
     """Mode de livraison d'une piste vers la Yoto (§18)."""
 
-    STREAM = "stream"  # type:stream, joué en streaming depuis ce serveur
+    STREAM = "stream"  # joué en streaming depuis ce serveur
     OFFLINE = "offline"  # fichier uploadé chez Yoto, écoutable hors ligne
 
 
@@ -43,16 +43,18 @@ class Settings(Base):
     provider: Mapped[str] = mapped_column(String(32), default="navidrome")
     navidrome_url: Mapped[str | None] = mapped_column(String(512))
     username: Mapped[str | None] = mapped_column(String(128))
-    password: Mapped[str | None] = mapped_column(String(256))
+    # Chiffré par app.secrets lorsque YOTO_SECRETS_KEY est défini.
+    password: Mapped[str | None] = mapped_column(Text)
     # Jeton partagé exigé sur les URLs /stream (déposé côté Yoto, révocable).
-    stream_token: Mapped[str | None] = mapped_column(String(64))
+    # Chiffré par app.secrets lorsque YOTO_SECRETS_KEY est défini.
+    stream_token: Mapped[str | None] = mapped_column(Text)
     # Intégration API officielle Yoto (§18) — OAuth Authorization Code + PKCE.
     yoto_client_id: Mapped[str | None] = mapped_column(String(128))
     yoto_access_token: Mapped[str | None] = mapped_column(Text)
     yoto_refresh_token: Mapped[str | None] = mapped_column(Text)
     yoto_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
-    yoto_pkce_verifier: Mapped[str | None] = mapped_column(String(128))
-    yoto_pkce_state: Mapped[str | None] = mapped_column(String(64))
+    yoto_pkce_verifier: Mapped[str | None] = mapped_column(Text)
+    yoto_pkce_state: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 

@@ -10,6 +10,7 @@ from ..database import get_session
 from ..models import Card, HistoryEntry, LibraryTrack, Settings
 from ..providers.factory import ProviderNotConfigured, build_provider
 from ..schemas import DashboardStats
+from ..secrets import is_set
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/stats", tags=["stats"])
 async def dashboard(session: AsyncSession = Depends(get_session)) -> DashboardStats:
     settings = await session.get(Settings, 1)
     configured = bool(
-        settings and settings.navidrome_url and settings.username and settings.password
+        settings and settings.navidrome_url and settings.username and is_set(settings.password)
     )
     online = False
     if configured and settings is not None:
@@ -45,6 +46,7 @@ async def dashboard(session: AsyncSession = Depends(get_session)) -> DashboardSt
 
 @router.get("/top-tracks")
 async def top_tracks(limit: int = 10, session: AsyncSession = Depends(get_session)) -> list[dict]:
+    limit = max(1, min(limit, 200))
     stmt = (
         select(
             HistoryEntry.song_id,

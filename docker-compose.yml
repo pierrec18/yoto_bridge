@@ -4,10 +4,7 @@ services:
     # Voir .github/workflows/build-images.yml. Pin possible via YOTO_IMAGE_TAG.
     image: "ghcr.io/pierrec18/yoto-bridge-backend:${YOTO_IMAGE_TAG:-latest}"
     container_name: yoto-bridge
-    # Backend non exposé sur le LAN : tout passe par le frontend (nginx) qui
-    # proxifie /api, /stream et /docs. Bind local pour debug sur l'hôte.
-    ports:
-      - "127.0.0.1:8000:8000"
+    # Backend non exposé sur l'hôte : tout passe par le frontend (nginx).
     environment:
       # La base et les logs sont persistés dans le volume monté.
       YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
@@ -24,18 +21,47 @@ services:
       # URL publique : sert aux URLs /stream déposées sur la Yoto ET au
       # redirect OAuth. DOIT correspondre au domaine réel + au Callback URL
       # déclaré dans le portail dev Yoto.
-      YOTO_PUBLIC_BASE_URL: "https://yotobridge.crvsk.me"
+      YOTO_PUBLIC_BASE_URL: "${YOTO_PUBLIC_BASE_URL:-http://localhost:8081}"
+      YOTO_CORS_ORIGINS: "${YOTO_CORS_ORIGINS:-}"
+      YOTO_SECRETS_KEY: "${YOTO_SECRETS_KEY:-}"
     volumes:
       # Chemin absolu et stable en prod (hors dossier synchronisé par Arcane),
       # sinon la base repart à zéro à chaque sync. Défaut ./data pour le dev.
       - "${YOTO_DATA_DIR:-./data}:/app/data"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   frontend:
     image: "ghcr.io/pierrec18/yoto-bridge-frontend:${YOTO_IMAGE_TAG:-latest}"
     container_name: yoto-bridge-web
     ports:
-      - "${YOTO_WEB_PORT:-8081}:80"
+      - "127.0.0.1:${YOTO_WEB_PORT:-8081}:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped

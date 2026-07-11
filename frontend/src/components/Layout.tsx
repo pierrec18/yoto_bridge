@@ -60,6 +60,14 @@ export function Layout({ children }: { children: ReactNode }) {
     setInstallPrompt(null);
   };
 
+  const logout = async () => {
+    try {
+      await api.logout();
+    } finally {
+      window.location.assign("/");
+    }
+  };
+
   return (
     <AppShell
       header={{ height: 56 }}
@@ -91,8 +99,9 @@ export function Layout({ children }: { children: ReactNode }) {
                   {auth.user?.name || auth.user?.email}
                 </Title>
                 <ActionIcon
-                  component="a"
-                  href="/api/auth/logout"
+                  component="button"
+                  type="button"
+                  onClick={logout}
                   variant="default"
                   aria-label="Déconnexion"
                 >

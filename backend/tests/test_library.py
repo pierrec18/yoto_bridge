@@ -8,6 +8,7 @@ from app.routers.library import album_tracks, artist_albums, artists
 
 async def test_browse_artist_albums_and_tracks(session: AsyncSession) -> None:
     session.add(LibraryArtist(id="artist-1", name="Daft Punk", album_count=1))
+    session.add(LibraryArtist(id="artist-2", name="Air", album_count=1))
     session.add(
         LibraryAlbum(
             id="album-1",
@@ -18,6 +19,15 @@ async def test_browse_artist_albums_and_tracks(session: AsyncSession) -> None:
         )
     )
     session.add(
+        LibraryAlbum(
+            id="album-2",
+            name="Moon Safari",
+            artist="Air",
+            artist_id="artist-2",
+            cover_art="cover-2",
+        )
+    )
+    session.add(
         LibraryTrack(
             id="song-1",
             title="One More Time",
@@ -25,6 +35,16 @@ async def test_browse_artist_albums_and_tracks(session: AsyncSession) -> None:
             album="Discovery",
             album_id="album-1",
             cover_art="cover-1",
+        )
+    )
+    session.add(
+        LibraryTrack(
+            id="song-2",
+            title="La femme d'argent",
+            artist="Air",
+            album="Moon Safari",
+            album_id="album-2",
+            cover_art="cover-2",
         )
     )
     await session.commit()
