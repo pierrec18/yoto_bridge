@@ -67,6 +67,8 @@ export interface Track {
   duration: number | null;
   cover_art: string | null;
   cover_url: string | null;
+  track_number: number | null;
+  disc_number: number | null;
 }
 
 export interface Playlist {

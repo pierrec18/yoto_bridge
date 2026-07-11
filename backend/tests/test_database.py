@@ -16,6 +16,8 @@ def test_sqlite_migration_adds_cover_columns() -> None:
         track_columns = {column["name"] for column in inspector.get_columns("library_tracks")}
         album_columns = {column["name"] for column in inspector.get_columns("library_albums")}
         assert "cover_art" in track_columns
+        assert "track_number" in track_columns
+        assert "disc_number" in track_columns
         assert "cover_art" in album_columns
 
     engine.dispose()

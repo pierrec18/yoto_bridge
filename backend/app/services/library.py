@@ -46,6 +46,8 @@ class LibrarySyncService:
                     duration=t.duration,
                     rating=t.rating,
                     cover_art=t.cover_art or album.cover_art,
+                    track_number=t.track_number,
+                    disc_number=t.disc_number,
                 )
 
         await self._replace(LibraryTrack, tracks_seen.values())

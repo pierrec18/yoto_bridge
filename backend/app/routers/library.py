@@ -21,6 +21,33 @@ def _cover_url(cover_art: str | None) -> str | None:
     return f"/api/library/cover?id={quote(cover_art)}" if cover_art else None
 
 
+def _track_out(track: LibraryTrack) -> TrackOut:
+    return TrackOut(
+        id=track.id,
+        title=track.title,
+        artist=track.artist,
+        album=track.album,
+        genre=track.genre,
+        year=track.year,
+        duration=track.duration,
+        cover_art=track.cover_art,
+        cover_url=_cover_url(track.cover_art),
+        track_number=track.track_number,
+        disc_number=track.disc_number,
+    )
+
+
+def _album_out(album: LibraryAlbum) -> AlbumOut:
+    return AlbumOut(
+        id=album.id,
+        name=album.name,
+        artist=album.artist,
+        year=album.year,
+        cover_art=album.cover_art,
+        cover_url=_cover_url(album.cover_art),
+    )
+
+
 @router.get("/search", response_model=list[TrackOut])
 async def search(
     q: str = Query(default="", description="Recherche instantanée sur titre/artiste/album"),
@@ -40,22 +67,9 @@ async def search(
         )
     if genre:
         stmt = stmt.where(LibraryTrack.genre == genre)
-    stmt = stmt.limit(limit)
+    stmt = stmt.order_by(LibraryTrack.title).limit(limit)
     rows = (await session.execute(stmt)).scalars().all()
-    return [
-        TrackOut(
-            id=r.id,
-            title=r.title,
-            artist=r.artist,
-            album=r.album,
-            genre=r.genre,
-            year=r.year,
-            duration=r.duration,
-            cover_art=r.cover_art,
-            cover_url=_cover_url(r.cover_art),
-        )
-        for r in rows
-    ]
+    return [_track_out(row) for row in rows]
 
 
 @router.get("/playlists", response_model=list[PlaylistOut])
@@ -66,24 +80,36 @@ async def playlists(session: AsyncSession = Depends(get_session)) -> list[Playli
 
 @router.get("/albums", response_model=list[AlbumOut])
 async def albums(
-    q: str = "", limit: int = Query(default=100, le=500),
+    q: str = "", limit: int = Query(default=1000, le=2000),
     session: AsyncSession = Depends(get_session),
 ) -> list[AlbumOut]:
     stmt = select(LibraryAlbum)
     if q:
-        stmt = stmt.where(LibraryAlbum.name.ilike(f"%{q}%"))
-    rows = (await session.execute(stmt.limit(limit))).scalars().all()
-    return [
-        AlbumOut(
-            id=r.id,
-            name=r.name,
-            artist=r.artist,
-            year=r.year,
-            cover_art=r.cover_art,
-            cover_url=_cover_url(r.cover_art),
+        like = f"%{q}%"
+        stmt = stmt.where(or_(LibraryAlbum.name.ilike(like), LibraryAlbum.artist.ilike(like)))
+    rows = (
+        await session.execute(stmt.order_by(LibraryAlbum.name).limit(limit))
+    ).scalars().all()
+    return [_album_out(row) for row in rows]
+
+
+@router.get("/albums/{album_id}/tracks", response_model=list[TrackOut])
+async def album_tracks(
+    album_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[TrackOut]:
+    rows = (
+        await session.execute(
+            select(LibraryTrack)
+            .where(LibraryTrack.album_id == album_id)
+            .order_by(
+                LibraryTrack.disc_number,
+                LibraryTrack.track_number,
+                LibraryTrack.title,
+            )
         )
-        for r in rows
-    ]
+    ).scalars().all()
+    return [_track_out(row) for row in rows]
 
 
 @router.get("/cover")
@@ -115,9 +141,33 @@ async def cover(
 
 
 @router.get("/artists", response_model=list[ArtistOut])
-async def artists(session: AsyncSession = Depends(get_session)) -> list[ArtistOut]:
-    rows = (await session.execute(select(LibraryArtist))).scalars().all()
+async def artists(
+    q: str = "",
+    limit: int = Query(default=200, le=500),
+    session: AsyncSession = Depends(get_session),
+) -> list[ArtistOut]:
+    stmt = select(LibraryArtist)
+    if q:
+        stmt = stmt.where(LibraryArtist.name.ilike(f"%{q}%"))
+    rows = (
+        await session.execute(stmt.order_by(LibraryArtist.name).limit(limit))
+    ).scalars().all()
     return [ArtistOut(id=r.id, name=r.name, album_count=r.album_count) for r in rows]
+
+
+@router.get("/artists/{artist_id}/albums", response_model=list[AlbumOut])
+async def artist_albums(
+    artist_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[AlbumOut]:
+    rows = (
+        await session.execute(
+            select(LibraryAlbum)
+            .where(LibraryAlbum.artist_id == artist_id)
+            .order_by(LibraryAlbum.name)
+        )
+    ).scalars().all()
+    return [_album_out(row) for row in rows]
 
 
 @router.get("/genres", response_model=list[str])

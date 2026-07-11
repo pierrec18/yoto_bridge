@@ -27,6 +27,8 @@ class ProviderTrack:
     duration: int | None = None  # secondes
     rating: int | None = None  # 1..5
     cover_art: str | None = None
+    track_number: int | None = None
+    disc_number: int | None = None
 
 
 @dataclass(slots=True)

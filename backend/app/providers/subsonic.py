@@ -91,6 +91,8 @@ class SubsonicProvider(MusicProvider):
             duration=raw.get("duration"),
             rating=raw.get("userRating"),
             cover_art=str(raw["coverArt"]) if raw.get("coverArt") is not None else None,
+            track_number=raw.get("track"),
+            disc_number=raw.get("discNumber"),
         )
 
     # -- Interface --------------------------------------------------------

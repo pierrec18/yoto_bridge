@@ -49,7 +49,11 @@ async def init_db() -> None:
 def _migrate_sqlite(conn: Connection) -> None:
     """Ajoute les colonnes compatibles aux bases créées par les versions précédentes."""
     migrations = {
-        "library_tracks": {"cover_art": "VARCHAR(128)"},
+        "library_tracks": {
+            "cover_art": "VARCHAR(128)",
+            "track_number": "INTEGER",
+            "disc_number": "INTEGER",
+        },
         "library_albums": {"cover_art": "VARCHAR(128)"},
     }
     inspector = inspect(conn)

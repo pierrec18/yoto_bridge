@@ -75,7 +75,11 @@ export const api = {
     request<Track[]>(`/api/library/search?q=${encodeURIComponent(q)}&limit=${limit}`),
   playlists: () => request<Playlist[]>("/api/library/playlists"),
   albums: (q = "") => request<Album[]>(`/api/library/albums?q=${encodeURIComponent(q)}`),
-  artists: () => request<Artist[]>("/api/library/artists"),
+  albumTracks: (albumId: string) =>
+    request<Track[]>(`/api/library/albums/${encodeURIComponent(albumId)}/tracks`),
+  artists: (q = "") => request<Artist[]>(`/api/library/artists?q=${encodeURIComponent(q)}`),
+  artistAlbums: (artistId: string) =>
+    request<Album[]>(`/api/library/artists/${encodeURIComponent(artistId)}/albums`),
 
   // Cards
   listCards: () => request<Card[]>("/api/cards"),

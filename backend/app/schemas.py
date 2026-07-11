@@ -100,6 +100,8 @@ class TrackOut(BaseModel):
     duration: int | None = None
     cover_art: str | None = None
     cover_url: str | None = None
+    track_number: int | None = None
+    disc_number: int | None = None
 
 
 class PlaylistOut(BaseModel):

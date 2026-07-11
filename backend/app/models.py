@@ -132,6 +132,8 @@ class LibraryTrack(Base):
     duration: Mapped[int | None] = mapped_column(Integer)
     rating: Mapped[int | None] = mapped_column(Integer)
     cover_art: Mapped[str | None] = mapped_column(String(128))
+    track_number: Mapped[int | None] = mapped_column(Integer)
+    disc_number: Mapped[int | None] = mapped_column(Integer)
 
 
 class LibraryAlbum(Base):
