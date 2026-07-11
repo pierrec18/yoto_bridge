@@ -24,7 +24,9 @@ services:
       # déclaré dans le portail dev Yoto.
       YOTO_PUBLIC_BASE_URL: "https://yotobridge.crvsk.me"
     volumes:
-      - ./data:/app/data
+      # Chemin absolu et stable en prod (hors dossier synchronisé par Arcane),
+      # sinon la base repart à zéro à chaque sync. Défaut ./data pour le dev.
+      - "${YOTO_DATA_DIR:-./data}:/app/data"
     restart: unless-stopped
 
   frontend:
