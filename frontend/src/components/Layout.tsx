@@ -7,17 +7,14 @@ import {
   Paper,
   Text,
   Title,
-  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconCards,
   IconDownload,
   IconLibrary,
   IconLogout,
-  IconMoon,
   IconRadio,
   IconSettings,
-  IconSun,
 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -39,7 +36,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const location = useLocation();
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -104,9 +100,6 @@ export function Layout({ children }: { children: ReactNode }) {
                 </ActionIcon>
               </>
             )}
-            <ActionIcon variant="default" onClick={() => toggleColorScheme()} aria-label="Thème">
-              {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
-            </ActionIcon>
           </Group>
         </Group>
       </AppShell.Header>

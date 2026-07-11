@@ -39,6 +39,10 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
 }
 
+// Une ancienne version proposait un toggle et pouvait mémoriser light/dark.
+// Sans préférence persistée, Mantine suit `prefers-color-scheme` du système.
+localStorage.removeItem("mantine-color-scheme-value");
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
