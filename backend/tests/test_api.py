@@ -67,6 +67,19 @@ async def test_card_crud_flow(client: httpx.AsyncClient) -> None:
     assert resp.status_code == 404
 
 
+async def test_card_track_count_is_limited_to_1_through_100(
+    client: httpx.AsyncClient,
+) -> None:
+    too_few = await client.post("/api/cards", json={"name": "Vide", "track_count": 0})
+    too_many = await client.post("/api/cards", json={"name": "Trop", "track_count": 101})
+    valid = await client.post("/api/cards", json={"name": "Maximum", "track_count": 100})
+
+    assert too_few.status_code == 422
+    assert too_many.status_code == 422
+    assert valid.status_code == 201
+    assert len(valid.json()["tracks"]) == 100
+
+
 async def test_dashboard_without_config(client: httpx.AsyncClient) -> None:
     resp = await client.get("/api/stats/dashboard")
     assert resp.status_code == 200

@@ -8,6 +8,7 @@ import {
   Divider,
   Group,
   Modal,
+  NumberInput,
   SegmentedControl,
   Select,
   Stack,
@@ -18,7 +19,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconCopy, IconUpload, IconWand } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconListNumbers, IconUpload, IconWand } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -51,13 +52,18 @@ export function CardEditPage() {
   const [activeTrack, setActiveTrack] = useState<number | null>(null);
   const [pickerOpen, { open: openPicker, close: closePicker }] = useDisclosure(false);
   const [genOpen, { open: openGen, close: closeGen }] = useDisclosure(false);
+  const [countOpen, { open: openCount, close: closeCount }] = useDisclosure(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [genPlaylist, setGenPlaylist] = useState<string | null>(null);
   const [genStrategy, setGenStrategy] = useState<string>("playlist_expand");
   const [streamToken, setStreamToken] = useState<string | null>(null);
+  const [trackCount, setTrackCount] = useState<number>(1);
   const mobile = useMediaQuery("(max-width: 47.99em)");
 
-  const load = () => api.getCard(cardId).then(setCard);
+  const load = () => api.getCard(cardId).then((loaded) => {
+    setCard(loaded);
+    setTrackCount(loaded.track_count);
+  });
   useEffect(() => {
     load();
     api.playlists().then(setPlaylists).catch(() => setPlaylists([]));
@@ -124,6 +130,25 @@ export function CardEditPage() {
     }
   };
 
+  const resizeCard = async () => {
+    if (!card) return;
+    if (
+      trackCount < card.track_count &&
+      !window.confirm(`Les pistes après la piste ${trackCount} seront supprimées. Continuer ?`)
+    ) {
+      return;
+    }
+    await api.updateCard(card.id, {
+      name: card.name,
+      description: card.description,
+      image_url: card.image_url,
+      track_count: trackCount,
+    });
+    closeCount();
+    await load();
+    notifications.show({ message: `${trackCount} pistes disponibles`, color: "green" });
+  };
+
   if (!card) return <Text>Chargement…</Text>;
 
   const configureTrack = (trackNumber: number) => {
@@ -141,6 +166,9 @@ export function CardEditPage() {
           </Text>
         </div>
         <Group>
+          <Button leftSection={<IconListNumbers size={16} />} variant="default" onClick={openCount}>
+            Nombre de pistes
+          </Button>
           <Button leftSection={<IconWand size={16} />} variant="light" onClick={openGen}>
             Générer automatiquement
           </Button>
@@ -289,6 +317,22 @@ export function CardEditPage() {
       </Stack>
 
       <ContentPicker opened={pickerOpen} onClose={closePicker} onSelect={applySelection} />
+
+      <Modal opened={countOpen} onClose={closeCount} title="Nombre de pistes" centered>
+        <Stack>
+          <Text size="sm" c="dimmed">
+            Choisis entre 1 et 100 pistes. Réduire ce nombre supprimera les pistes excédentaires.
+          </Text>
+          <NumberInput
+            value={trackCount}
+            onChange={(value) => setTrackCount(Number(value) || 1)}
+            min={1}
+            max={100}
+            clampBehavior="strict"
+          />
+          <Button onClick={resizeCard}>Appliquer</Button>
+        </Stack>
+      </Modal>
 
       <Modal opened={genOpen} onClose={closeGen} title="Génération automatique" fullScreen={mobile}>
         <Stack>

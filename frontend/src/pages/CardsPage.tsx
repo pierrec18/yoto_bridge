@@ -24,7 +24,7 @@ export function CardsPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [opened, { open, close }] = useDisclosure(false);
   const [name, setName] = useState("");
-  const [trackCount, setTrackCount] = useState<number>(20);
+  const [trackCount, setTrackCount] = useState<number>(1);
   const navigate = useNavigate();
   const mobile = useMediaQuery("(max-width: 47.99em)");
 
@@ -105,7 +105,8 @@ export function CardsPage() {
             value={trackCount}
             onChange={(v) => setTrackCount(Number(v) || 0)}
             min={1}
-            max={500}
+            max={100}
+            clampBehavior="strict"
           />
           <Button onClick={create}>Créer</Button>
         </Stack>

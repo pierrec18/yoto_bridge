@@ -60,7 +60,7 @@ class CardIn(BaseModel):
     name: str
     description: str | None = None
     image_url: str | None = None
-    track_count: int = Field(default=0, ge=0)
+    track_count: int = Field(default=1, ge=1, le=100)
 
 
 class CardOut(BaseModel):
