@@ -1,0 +1,7 @@
+# Override pour builder localement au lieu de tirer les images GHCR.
+# Usage : docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
+services:
+  backend:
+    build: ./backend
+  frontend:
+    build: ./frontend

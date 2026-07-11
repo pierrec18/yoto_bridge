@@ -1,6 +1,8 @@
 services:
   backend:
-    build: ./backend
+    # Images construites par la CI GitHub Actions et publiées sur GHCR.
+    # Voir .github/workflows/build-images.yml. Pin possible via YOTO_IMAGE_TAG.
+    image: "ghcr.io/pierrec18/yoto-bridge-backend:${YOTO_IMAGE_TAG:-latest}"
     container_name: yoto-bridge
     # Backend non exposé sur le LAN : tout passe par le frontend (nginx) qui
     # proxifie /api, /stream et /docs. Bind local pour debug sur l'hôte.
@@ -11,8 +13,8 @@ services:
       YOTO_DATABASE_URL: "sqlite+aiosqlite:///./data/yoto_bridge.sqlite"
       YOTO_SYNC_INTERVAL_SECONDS: "3600"
       YOTO_STREAM_DEFAULT_BITRATE: "192"
-      # Auth OIDC optionnelle. Les valeurs sensibles viennent du fichier .env
-      # placé à côté de ce compose (jamais commité).
+      # Auth OIDC optionnelle. Les valeurs sensibles viennent de l'environnement
+      # du projet (Arcane) / d'un .env — jamais commité.
       YOTO_AUTH_ENABLED: "${YOTO_AUTH_ENABLED:-false}"
       YOTO_OIDC_ISSUER_URL: "${YOTO_OIDC_ISSUER_URL:-}"
       YOTO_OIDC_CLIENT_ID: "${YOTO_OIDC_CLIENT_ID:-}"
@@ -30,7 +32,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend
+    image: "ghcr.io/pierrec18/yoto-bridge-frontend:${YOTO_IMAGE_TAG:-latest}"
     container_name: yoto-bridge-web
     ports:
       - "${YOTO_WEB_PORT:-8081}:80"
