@@ -3,8 +3,10 @@ import "@mantine/notifications/styles.css";
 import "./index.css";
 
 import { createTheme, MantineProvider } from "@mantine/core";
+import type { MantineColorScheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
@@ -43,13 +45,50 @@ if ("serviceWorker" in navigator) {
 // Sans préférence persistée, Mantine suit `prefers-color-scheme` du système.
 localStorage.removeItem("mantine-color-scheme-value");
 
+function systemColorScheme(): Exclude<MantineColorScheme, "auto"> {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function SystemThemeProvider({ children }: { children: ReactNode }) {
+  const [colorScheme, setColorScheme] = useState(systemColorScheme);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => setColorScheme(media.matches ? "dark" : "light");
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+
+    // addListener couvre les versions de Safari/iOS qui ne réveillent pas
+    // correctement une PWA avec addEventListener lorsque le thème change.
+    media.addEventListener?.("change", sync);
+    media.addListener?.(sync);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+    sync();
+
+    return () => {
+      media.removeEventListener?.("change", sync);
+      media.removeListener?.(sync);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
+  }, []);
+
+  return (
+    <MantineProvider theme={theme} forceColorScheme={colorScheme}>
+      {children}
+    </MantineProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto">
+    <SystemThemeProvider>
       <Notifications position="top-center" />
       <BrowserRouter>
         <App />
       </BrowserRouter>
-    </MantineProvider>
+    </SystemThemeProvider>
   </React.StrictMode>,
 );
