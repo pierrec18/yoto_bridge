@@ -12,7 +12,7 @@ import {
   TextInput,
   UnstyledButton,
 } from "@mantine/core";
-import { useDebouncedValue } from "@mantine/hooks";
+import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -61,6 +61,7 @@ function PickList<T extends { id: string }>({
 }
 
 export function ContentPicker({ opened, onClose, onSelect }: Props) {
+  const mobile = useMediaQuery("(max-width: 47.99em)");
   const [query, setQuery] = useState("");
   const [debounced] = useDebouncedValue(query, 250);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -90,8 +91,8 @@ export function ContentPicker({ opened, onClose, onSelect }: Props) {
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Configurer la piste" size="lg">
-      <Tabs defaultValue="track">
+    <Modal opened={opened} onClose={onClose} title="Configurer la piste" size="lg" fullScreen={mobile}>
+      <Tabs defaultValue="track" className="mobile-tabs">
         <Tabs.List mb="sm">
           <Tabs.Tab value="track">Morceau</Tabs.Tab>
           <Tabs.Tab value="album">Album</Tabs.Tab>

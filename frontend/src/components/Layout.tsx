@@ -1,15 +1,17 @@
 import {
   ActionIcon,
   AppShell,
-  Burger,
+  Button,
   Group,
   NavLink,
+  Paper,
+  Text,
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import {
   IconCards,
+  IconDownload,
   IconLibrary,
   IconLogout,
   IconMoon,
@@ -31,30 +33,62 @@ const NAV = [
   { to: "/settings", label: "Réglages", icon: IconSettings },
 ];
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function Layout({ children }: { children: ReactNode }) {
-  const [opened, { toggle, close }] = useDisclosure();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const location = useLocation();
   const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     api.authStatus().then(setAuth).catch(() => setAuth(null));
   }, []);
 
+  useEffect(() => {
+    const capture = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", capture);
+    return () => window.removeEventListener("beforeinstallprompt", capture);
+  }, []);
+
+  const install = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  };
+
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !opened } }}
+      navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: true } }}
       padding="md"
+      className="app-shell"
     >
-      <AppShell.Header>
+      <AppShell.Header className="app-header">
         <Group h="100%" px="md" justify="space-between">
           <Group gap="xs">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <IconRadio size={22} />
-            <Title order={4}>Yoto Radio Server</Title>
+            <img src="/icons/app-icon.svg" alt="" className="brand-mark" />
+            <Title order={4}>Yoto Bridge</Title>
           </Group>
           <Group gap="xs">
+            {installPrompt && (
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconDownload size={16} />}
+                onClick={install}
+                className="install-button"
+              >
+                Installer
+              </Button>
+            )}
             {auth?.enabled && (
               <>
                 <Title order={6} visibleFrom="sm">
@@ -90,12 +124,34 @@ export function Layout({ children }: { children: ReactNode }) {
                 ? location.pathname === "/"
                 : location.pathname.startsWith(item.to)
             }
-            onClick={close}
           />
         ))}
       </AppShell.Navbar>
 
-      <AppShell.Main>{children}</AppShell.Main>
+      <AppShell.Main>
+        <div className="page-container">{children}</div>
+      </AppShell.Main>
+
+      <Paper component="nav" className="mobile-nav" shadow="lg" radius={0}>
+        {NAV.map((item) => {
+          const active =
+            item.to === "/"
+              ? location.pathname === "/"
+              : location.pathname.startsWith(item.to);
+          return (
+            <RouterNavLink
+              key={item.to}
+              to={item.to}
+              className={`mobile-nav-link${active ? " active" : ""}`}
+            >
+              <item.icon size={22} stroke={active ? 2.6 : 2} />
+              <Text component="span" size="xs" fw={active ? 700 : 500}>
+                {item.label}
+              </Text>
+            </RouterNavLink>
+          );
+        })}
+      </Paper>
     </AppShell>
   );
 }

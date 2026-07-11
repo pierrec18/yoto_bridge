@@ -3,7 +3,9 @@ import {
   Avatar,
   Badge,
   Button,
+  Card as MCard,
   CopyButton,
+  Divider,
   Group,
   Modal,
   SegmentedControl,
@@ -14,7 +16,7 @@ import {
   Title,
   Tooltip,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconCopy, IconUpload, IconWand } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -53,6 +55,7 @@ export function CardEditPage() {
   const [genPlaylist, setGenPlaylist] = useState<string | null>(null);
   const [genStrategy, setGenStrategy] = useState<string>("playlist_expand");
   const [streamToken, setStreamToken] = useState<string | null>(null);
+  const mobile = useMediaQuery("(max-width: 47.99em)");
 
   const load = () => api.getCard(cardId).then(setCard);
   useEffect(() => {
@@ -123,9 +126,14 @@ export function CardEditPage() {
 
   if (!card) return <Text>Chargement…</Text>;
 
+  const configureTrack = (trackNumber: number) => {
+    setActiveTrack(trackNumber);
+    openPicker();
+  };
+
   return (
     <>
-      <Group justify="space-between" mb="lg">
+      <div className="page-header">
         <div>
           <Title order={2}>{card.name}</Title>
           <Text c="dimmed" size="sm">
@@ -144,9 +152,9 @@ export function CardEditPage() {
             Publier sur Yoto
           </Button>
         </Group>
-      </Group>
+      </div>
 
-      <Table.ScrollContainer minWidth={700}>
+      <Table.ScrollContainer minWidth={700} visibleFrom="sm">
         <Table striped highlightOnHover verticalSpacing="sm">
           <Table.Thead>
             <Table.Tr>
@@ -212,10 +220,7 @@ export function CardEditPage() {
                     <Button
                       size="xs"
                       variant="default"
-                      onClick={() => {
-                        setActiveTrack(track.track_number);
-                        openPicker();
-                      }}
+                      onClick={() => configureTrack(track.track_number)}
                     >
                       Configurer
                     </Button>
@@ -227,9 +232,65 @@ export function CardEditPage() {
         </Table>
       </Table.ScrollContainer>
 
+      <Stack gap="sm" hiddenFrom="sm">
+        {card.tracks.map((track) => {
+          const tokenSuffix = streamToken ? `?t=${streamToken}` : "";
+          const url = `${window.location.origin}/stream/${card.id}/${track.track_number}${tokenSuffix}`;
+          return (
+            <MCard key={track.track_number} withBorder radius="xl" padding="md" className="track-mobile-card">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                  <div className="track-number">{track.track_number}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <Badge color={MODE_COLORS[track.mode]} variant="light" mb={4}>
+                      {MODE_LABELS[track.mode]}
+                    </Badge>
+                    <Text fw={700} size="sm" lineClamp={2}>
+                      {track.label || "Piste non configurée"}
+                    </Text>
+                  </div>
+                </Group>
+                <CopyButton value={url}>
+                  {({ copied, copy }) => (
+                    <ActionIcon variant="light" size="lg" onClick={copy} aria-label="Copier l’URL">
+                      {copied ? <IconCheck size={18} /> : <IconCopy size={18} />}
+                    </ActionIcon>
+                  )}
+                </CopyButton>
+              </Group>
+
+              <Group gap="sm" wrap="nowrap" mt="md">
+                <Avatar
+                  src={typeof track.config.cover_url === "string" ? track.config.cover_url : null}
+                  radius="md"
+                  size={56}
+                />
+                <Text size="sm" c="dimmed">
+                  {track.mode === "fixed" ? "Morceau fixe" : "Contenu dynamique"}
+                </Text>
+              </Group>
+
+              <Divider my="md" />
+              <SegmentedControl
+                fullWidth
+                value={track.delivery}
+                onChange={(value) => changeDelivery(track, value as Delivery)}
+                data={[
+                  { label: "Stream", value: "stream" },
+                  { label: "Hors ligne", value: "offline", disabled: track.mode !== "fixed" },
+                ]}
+              />
+              <Button fullWidth variant="light" mt="sm" onClick={() => configureTrack(track.track_number)}>
+                Configurer la piste
+              </Button>
+            </MCard>
+          );
+        })}
+      </Stack>
+
       <ContentPicker opened={pickerOpen} onClose={closePicker} onSelect={applySelection} />
 
-      <Modal opened={genOpen} onClose={closeGen} title="Génération automatique">
+      <Modal opened={genOpen} onClose={closeGen} title="Génération automatique" fullScreen={mobile}>
         <Stack>
           <Select
             label="Stratégie"

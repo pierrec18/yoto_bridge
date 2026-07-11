@@ -159,6 +159,17 @@ bibliothèque. Les pochettes sont alors affichées dans la recherche et l'édite
 Lors de la publication, Yoto les convertit automatiquement en icônes 16×16 ; le
 résultat est mis en cache pour éviter de téléverser plusieurs fois la même image.
 
+### Installation mobile (PWA)
+
+L'interface est installable comme application dès qu'elle est servie en HTTPS.
+
+- Android / Chrome : ouvrir le bridge puis choisir **Installer l'application**
+  (le bouton **Installer** apparaît aussi dans l'en-tête lorsqu'il est disponible).
+- iPhone / Safari : bouton **Partager**, puis **Sur l'écran d'accueil**.
+
+Le shell et les ressources visuelles sont disponibles hors connexion. Les actions
+sur la bibliothèque, les cartes et les flux audio nécessitent toujours le serveur.
+
 ## Tests
 
 ```bash

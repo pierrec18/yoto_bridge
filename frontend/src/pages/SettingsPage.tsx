@@ -116,10 +116,11 @@ export function SettingsPage() {
 
   return (
     <>
-      <Title order={2} mb="lg">
-        Réglages Navidrome
-      </Title>
-      <Stack maw={480}>
+      <div className="page-header">
+        <Title order={2}>Réglages</Title>
+      </div>
+      <Stack maw={560}>
+        <Title order={4}>Navidrome</Title>
         <TextInput
           label="URL Navidrome"
           placeholder="https://navidrome.exemple.fr"
@@ -144,7 +145,7 @@ export function SettingsPage() {
           </Alert>
         )}
 
-        <Group>
+        <Group className="responsive-actions">
           <Button
             variant="default"
             leftSection={<IconPlugConnected size={16} />}
@@ -166,7 +167,7 @@ export function SettingsPage() {
           de fuite, réinitialise-le : les anciennes URLs cesseront de fonctionner et tu devras les
           recopier depuis l'éditeur de carte.
         </Text>
-        <Group>
+        <Group className="responsive-actions">
           <TextInput readOnly value={token ?? ""} style={{ flex: 1 }} aria-label="Token" />
           <CopyButton value={token ?? ""}>
             {({ copied, copy }) => (
@@ -206,8 +207,8 @@ export function SettingsPage() {
           dans le portail développeur Yoto :
         </Text>
         {yoto && (
-          <Group gap="xs">
-            <Code>{yoto.redirect_uri}</Code>
+          <Group gap="xs" className="responsive-actions">
+            <Code style={{ overflowWrap: "anywhere" }}>{yoto.redirect_uri}</Code>
             <CopyButton value={yoto.redirect_uri}>
               {({ copied, copy }) => (
                 <Button size="xs" variant="subtle" onClick={copy}>
@@ -217,7 +218,7 @@ export function SettingsPage() {
             </CopyButton>
           </Group>
         )}
-        <Group align="flex-end">
+        <Group align="flex-end" className="responsive-actions">
           <TextInput
             label="client_id Yoto"
             placeholder={yoto?.client_id_set ? "•••••• (défini)" : "client_id"}
@@ -229,7 +230,7 @@ export function SettingsPage() {
             Enregistrer
           </Button>
         </Group>
-        <Group>
+        <Group className="responsive-actions">
           {yoto?.connected ? (
             <Button color="red" variant="light" onClick={disconnectYoto}>
               Déconnecter

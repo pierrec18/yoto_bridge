@@ -1,7 +1,256 @@
+:root {
+  --yoto-orange: #f15a24;
+  --yoto-orange-soft: #fff0e8;
+  --yoto-ink: #172238;
+  --yoto-cream: #f7f2e9;
+  --yoto-yellow: #ffd34e;
+  --yoto-mint: #66d4c5;
+  --yoto-border: #e8dfd2;
+}
+
+html {
+  background: var(--yoto-cream);
+}
+
 body {
   margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 8% 4%, rgb(255 211 78 / 16%), transparent 24rem),
+    radial-gradient(circle at 96% 18%, rgb(102 212 197 / 12%), transparent 26rem),
+    var(--yoto-cream);
+  color: var(--yoto-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+.app-header {
+  border-bottom: 1px solid rgb(232 223 210 / 80%);
+  background: rgb(255 252 247 / 88%);
+  backdrop-filter: blur(18px);
+}
+
+[data-mantine-color-scheme="dark"] .app-header {
+  border-color: rgb(255 255 255 / 8%);
+  background: rgb(23 34 56 / 88%);
+}
+
+[data-mantine-color-scheme="dark"] body {
+  background:
+    radial-gradient(circle at 8% 4%, rgb(241 90 36 / 10%), transparent 24rem),
+    #101827;
+  color: #f8f4ec;
+}
+
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  box-shadow: 0 4px 12px rgb(241 90 36 / 24%);
+}
+
+.page-container {
+  width: min(100%, 1180px);
+  margin-inline: auto;
+}
+
+.app-shell .mantine-AppShell-main {
+  background: transparent;
+}
+
+.mantine-AppShell-navbar {
+  border-right: 0;
+  background: transparent;
+}
+
+.mantine-NavLink-root {
+  margin-bottom: 0.35rem;
+  border-radius: 14px;
+}
+
+.mantine-NavLink-root[data-active] {
+  color: var(--yoto-ink);
+  background: var(--yoto-orange-soft);
+}
+
+.mantine-Card-root {
+  border-color: var(--yoto-border);
+  box-shadow: 0 8px 26px rgb(56 39 20 / 6%);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Card-root {
+  border-color: rgb(255 255 255 / 9%);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 18%);
+}
+
+[data-mantine-color-scheme="dark"] .mantine-NavLink-root[data-active] {
+  color: #fff;
+  background: rgb(241 90 36 / 18%);
+}
+
+.mantine-Button-root {
+  font-weight: 700;
+}
+
+.mantine-Button-root:not([data-variant="subtle"]):not([data-variant="default"]) {
+  box-shadow: 0 5px 14px rgb(241 90 36 / 16%);
+}
+
+.mantine-Modal-content {
+  border-radius: 24px;
+}
+
+.mobile-nav {
+  display: none;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .picker-row:hover {
   background-color: var(--mantine-color-default-hover);
+}
+
+.track-mobile-card {
+  overflow: hidden;
+}
+
+.track-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: var(--yoto-ink);
+  background: var(--yoto-yellow);
+  font-weight: 800;
+}
+
+@media (max-width: 47.99em) {
+  body {
+    background:
+      radial-gradient(circle at 8% 2%, rgb(255 211 78 / 14%), transparent 16rem),
+      var(--yoto-cream);
+  }
+
+  [data-mantine-color-scheme="dark"] body {
+    background:
+      radial-gradient(circle at 8% 2%, rgb(241 90 36 / 10%), transparent 16rem),
+      #101827;
+  }
+
+  .mantine-AppShell-main {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .app-header .mantine-Group-root {
+    padding-inline: 0.75rem;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .install-button .mantine-Button-label {
+    display: none;
+  }
+
+  .install-button .mantine-Button-section {
+    margin: 0;
+  }
+
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-header > .mantine-Group-root,
+  .page-header > .mantine-Button-root,
+  .mobile-full {
+    width: 100%;
+  }
+
+  .page-header > .mantine-Group-root .mantine-Button-root {
+    flex: 1;
+  }
+
+  .responsive-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .responsive-actions > * {
+    width: 100%;
+  }
+
+  .mobile-nav {
+    position: fixed;
+    z-index: 300;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    min-height: 68px;
+    padding: 0.4rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--yoto-border);
+    background: rgb(255 252 247 / 94%);
+    backdrop-filter: blur(18px);
+  }
+
+  [data-mantine-color-scheme="dark"] .mobile-nav {
+    border-color: rgb(255 255 255 / 8%);
+    background: rgb(23 34 56 / 94%);
+  }
+
+  .mobile-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    padding: 0.3rem 0.1rem;
+    border-radius: 14px;
+    color: var(--mantine-color-dimmed);
+    text-decoration: none;
+  }
+
+  .mobile-nav-link.active {
+    color: var(--yoto-orange);
+    background: var(--yoto-orange-soft);
+  }
+
+  [data-mantine-color-scheme="dark"] .mobile-nav-link.active {
+    background: rgb(241 90 36 / 18%);
+  }
+
+  .mantine-Modal-content {
+    border-radius: 0;
+  }
+
+  .mobile-tabs .mantine-Tabs-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .mobile-tabs .mantine-Tabs-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-tabs .mantine-ScrollArea-root {
+    height: max(280px, calc(100dvh - 250px)) !important;
+  }
 }

@@ -51,12 +51,12 @@ export function DashboardPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="lg">
+      <div className="page-header">
         <Title order={2}>Dashboard</Title>
-        <Button leftSection={<IconRefresh size={16} />} onClick={runSync} loading={syncing}>
+        <Button className="mobile-full" leftSection={<IconRefresh size={16} />} onClick={runSync} loading={syncing}>
           Synchroniser
         </Button>
-      </Group>
+      </div>
 
       <Group mb="lg">
         <Text>État Navidrome :</Text>

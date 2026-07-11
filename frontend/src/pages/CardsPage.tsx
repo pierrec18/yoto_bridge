@@ -11,7 +11,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconCopy, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -26,6 +26,7 @@ export function CardsPage() {
   const [name, setName] = useState("");
   const [trackCount, setTrackCount] = useState<number>(20);
   const navigate = useNavigate();
+  const mobile = useMediaQuery("(max-width: 47.99em)");
 
   const load = () => api.listCards().then(setCards).catch(() => setCards([]));
   useEffect(() => {
@@ -53,16 +54,16 @@ export function CardsPage() {
 
   return (
     <>
-      <Group justify="space-between" mb="lg">
+      <div className="page-header">
         <Title order={2}>Cartes</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={open}>
+        <Button className="mobile-full" leftSection={<IconPlus size={16} />} onClick={open}>
           Nouvelle carte
         </Button>
-      </Group>
+      </div>
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
         {cards.map((card) => (
-          <MCard key={card.id} withBorder padding="lg" radius="md">
+          <MCard key={card.id} withBorder padding="lg" radius="xl">
             <Group justify="space-between" mb="xs">
               <Text fw={600}>{card.name}</Text>
               <Group gap={4}>
@@ -91,7 +92,7 @@ export function CardsPage() {
 
       {cards.length === 0 && <Text c="dimmed">Aucune carte pour l'instant.</Text>}
 
-      <Modal opened={opened} onClose={close} title="Nouvelle carte">
+      <Modal opened={opened} onClose={close} title="Nouvelle carte" fullScreen={mobile}>
         <Stack>
           <TextInput
             label="Nom"

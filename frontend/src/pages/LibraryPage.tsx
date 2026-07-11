@@ -1,4 +1,4 @@
-import { Avatar, Group, Table, Text, TextInput, Title } from "@mantine/core";
+import { Avatar, Card, Group, Stack, Table, Text, TextInput, Title } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -17,9 +17,9 @@ export function LibraryPage() {
 
   return (
     <>
-      <Title order={2} mb="lg">
-        Bibliothèque
-      </Title>
+      <div className="page-header">
+        <Title order={2}>Bibliothèque</Title>
+      </div>
       <TextInput
         placeholder="Recherche instantanée (titre, artiste, album)…"
         leftSection={<IconSearch size={16} />}
@@ -32,7 +32,8 @@ export function LibraryPage() {
       {tracks.length === 0 ? (
         <Text c="dimmed">Aucun résultat. Pense à lancer une synchronisation.</Text>
       ) : (
-        <Table.ScrollContainer minWidth={600}>
+        <>
+        <Table.ScrollContainer minWidth={600} visibleFrom="sm">
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
@@ -61,6 +62,24 @@ export function LibraryPage() {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
+        <Stack gap="sm" hiddenFrom="sm">
+          {tracks.map((track) => (
+            <Card key={track.id} withBorder radius="xl" padding="md">
+              <Group gap="md" wrap="nowrap" align="flex-start">
+                <Avatar src={track.cover_url} radius="md" size={64} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text fw={700} lineClamp={2}>{track.title}</Text>
+                  <Text size="sm" c="dimmed" lineClamp={1}>{track.artist ?? "Artiste inconnu"}</Text>
+                  <Text size="xs" c="dimmed" mt={4} lineClamp={1}>
+                    {track.album ?? "Album inconnu"}
+                    {track.year ? ` · ${track.year}` : ""}
+                  </Text>
+                </div>
+              </Group>
+            </Card>
+          ))}
+        </Stack>
+        </>
       )}
     </>
   );
