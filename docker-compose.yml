@@ -47,7 +47,7 @@ services:
     image: "ghcr.io/pierrec18/yoto-bridge-frontend:${YOTO_IMAGE_TAG:-latest}"
     container_name: yoto-bridge-web
     ports:
-      - "127.0.0.1:${YOTO_WEB_PORT:-8081}:8080"
+      - "${YOTO_WEB_PORT:-8081}:8080"
     depends_on:
       backend:
         condition: service_healthy
